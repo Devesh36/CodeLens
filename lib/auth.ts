@@ -10,6 +10,8 @@ const JWT_EXPIRATION = "30d";
 export interface JWTPayload {
   userId: string;
   email: string;
+  // allow extra claims when passed to jose's SignJWT
+  [key: string]: unknown;
 }
 
 export async function hashPassword(password: string): Promise<string> {

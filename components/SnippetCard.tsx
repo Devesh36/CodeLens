@@ -109,14 +109,3 @@ export function SnippetCard({
     </div>
   );
 }
-            }}
-            className="p-2.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-900/30 border border-transparent hover:border-red-700/50 transition-all duration-200 transform hover:scale-110"
-            title="Delete snippet"
-          >
-            <Trash2 size={18} />
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}

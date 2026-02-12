@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 import { hashPassword, verifyPassword, signJWT } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
@@ -48,7 +49,7 @@ export async function createSnippet(
   code: string,
   language: string,
   explanation: string,
-  explanationJson: object | null
+  explanationJson: Prisma.InputJsonValue | null
 ) {
   try {
     const snippet = await prisma.snippet.create({
@@ -57,7 +58,9 @@ export async function createSnippet(
         code,
         language,
         explanation,
-        explanationJson,
+        // Prisma's typings don't accept `null` directly for JSON input —
+        // pass `undefined` when there's no JSON value so the column becomes null.
+        explanationJson: explanationJson ?? undefined,
         userId,
       },
     });
@@ -74,7 +77,7 @@ export async function updateSnippet(
   code: string,
   language: string,
   explanation: string,
-  explanationJson: object | null
+  explanationJson: Prisma.InputJsonValue | null
 ) {
   try {
     const snippet = await prisma.snippet.update({
@@ -84,7 +87,7 @@ export async function updateSnippet(
         code,
         language,
         explanation,
-        explanationJson,
+        explanationJson: explanationJson ?? undefined,
       },
     });
     revalidatePath("/dashboard");

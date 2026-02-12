@@ -35,14 +35,14 @@ export function Editor({
       script.src =
         "https://cdn.jsdelivr.net/npm/monaco-editor@latest/min/vs/loader.min.js";
       script.onload = () => {
-        // @ts-expect-error - require is loaded dynamically
-        const require = window.require;
+        // `require` is injected by the Monaco loader script at runtime
+        const require = (window as any).require;
         require.config({
           paths: {
             vs: "https://cdn.jsdelivr.net/npm/monaco-editor@latest/min/vs",
           },
         });
-        // @ts-expect-error - require is loaded dynamically from script
+        // call the loader registered by Monaco's loader script
         require(["vs/editor/editor.main"], () => {
           setMonacoLoaded(true);
         });
