@@ -1,7 +1,6 @@
 "use server";
 
 import { prisma } from "@/lib/db";
-import type { Prisma } from "@prisma/client";
 import { hashPassword, verifyPassword, signJWT } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
@@ -49,7 +48,7 @@ export async function createSnippet(
   code: string,
   language: string,
   explanation: string,
-  explanationJson: Prisma.InputJsonValue | null
+  explanationJson: any | null
 ) {
   try {
     const snippet = await prisma.snippet.create({
@@ -77,7 +76,7 @@ export async function updateSnippet(
   code: string,
   language: string,
   explanation: string,
-  explanationJson: Prisma.InputJsonValue | null
+  explanationJson: any | null
 ) {
   try {
     const snippet = await prisma.snippet.update({

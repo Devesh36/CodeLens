@@ -8,7 +8,7 @@ import { ExplanationResponse } from "@/lib/ai";
 import { getLanguageName } from "@/lib/utils";
 import Link from "next/link";
 import { PROGRAMMING_LANGUAGES } from "@/lib/utils";
-import type { Prisma } from "@prisma/client";
+
 
 interface Snippet {
   id: string;
@@ -70,8 +70,8 @@ export default function EditSnippetPage() {
         formData.code,
         formData.language,
         snippet.explanation,
-        // cast to Prisma.InputJsonValue so the server action accepts the value
-        (snippet.explanationJson as unknown) as Prisma.InputJsonValue | null
+        // pass JSON through with a broad type for cross-version compatibility
+        (snippet.explanationJson as unknown) as any | null
       );
 
       if (result.error) {

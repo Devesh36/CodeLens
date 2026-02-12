@@ -6,7 +6,6 @@ import { Editor } from "@/components/Editor";
 import { ExplanationPanel } from "@/components/ExplanationPanel";
 import { ExplanationResponse } from "@/lib/ai";
 import { createSnippet } from "@/app/actions";
-import type { Prisma } from "@prisma/client";
 
 export default function EditorPage() {
   const router = useRouter();
@@ -105,8 +104,8 @@ export default function EditorPage() {
         code,
         language,
         explanation?.summary || "",
-        // cast client-side ExplanationResponse to a Prisma JSON input value
-        (explanation as unknown) as Prisma.InputJsonValue | null
+        // JSON can be passed directly to the server action — use a broad type here for compatibility
+        (explanation as unknown) as any | null
       );
 
       if (result.error) {
