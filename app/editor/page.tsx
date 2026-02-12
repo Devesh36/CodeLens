@@ -131,18 +131,15 @@ export default function EditorPage() {
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
           <button
-          type = "button"
-            onClick={() => {
-              if (!isAuthenticated) {
-                if (confirm("Sign up to save and organize your code snippets. Create an account?")) {
-                  router.push("/signup");
-                }
-              } else {
-                setShowSaveModal(true);
-              }
-            }}
-            className="px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg transition-all flex-1 md:flex-none"
-          >
+          type="button"
+          onClick={() => {
+            // Feature under development — show a user-facing message instead of saving
+            setError("Save snippets are still in development — coming soon!");
+            // auto-clear the message after a short delay
+            setTimeout(() => setError(""), 4000);
+          }}
+          className="px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg transition-all flex-1 md:flex-none"
+        >
             Save Snippet
           </button>
           {isAuthenticated ? (
@@ -159,7 +156,10 @@ export default function EditorPage() {
           ) : (
             <button
               type="button"
-              onClick={() => router.push("/login")}
+              onClick={() => {
+                setError("Sign in is still in development — coming soon!");
+                setTimeout(() => setError(""), 4000);
+              }}
               className="px-6 py-2.5 bg-white border border-gray-300 text-gray-700 font-semibold rounded-lg hover:border-teal-600 hover:text-teal-600 transition-all flex-1 md:flex-none"
             >
               Sign In
@@ -188,7 +188,10 @@ export default function EditorPage() {
           </div>
           <button
             type="button"
-            onClick={() => router.push("/signup")}
+            onClick={() => {
+              setError("Sign up is still in development — coming soon!");
+              setTimeout(() => setError(""), 4000);
+            }}
             className="px-6 py-2 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg transition-all whitespace-nowrap text-sm"
           >
             Sign Up
