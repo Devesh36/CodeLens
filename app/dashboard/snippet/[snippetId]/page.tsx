@@ -1,11 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getSnippet, toggleFavorite, toggleSnippetVisibility, deleteSnippet, addTagToSnippet, removeTagFromSnippet } from "@/app/actions";
+import {
+  getSnippet,
+  toggleFavorite,
+  toggleSnippetVisibility,
+  deleteSnippet,
+  addTagToSnippet,
+  removeTagFromSnippet,
+  getCurrentUser,
+} from "@/app/actions";
 import { ExplanationPanel } from "@/components/ExplanationPanel";
 import { ExplanationResponse } from "@/lib/ai";
-import { getLanguageName, formatDate, generateShareLink } from "@/lib/utils";
+import { getLanguageName, formatDate } from "@/lib/utils";
 import Link from "next/link";
 import { Copy, Heart, Trash2, Edit2, Share2, Tag, X } from "lucide-react";
 
@@ -36,28 +44,31 @@ export default function SnippetDetailPage() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [userId, setUserId] = useState("");
 
-  useEffect(() => {
-    loadData();
-  }, [params]);
-
-  async function loadData() {
+  async function copyShareLink(shareLink: string) {
     try {
-      const token = localStorage.getItem("auth_token");
-      if (!token) {
+      await navigator.clipboard.writeText(shareLink);
+      alert("Share link copied to clipboard!");
+    } catch {
+      window.prompt("Copy this share link:", shareLink);
+    }
+  }
+
+  const loadData = useCallback(async () => {
+    try {
+      const authResult = await getCurrentUser();
+      if (!authResult.user?.id) {
         router.push("/login");
         return;
       }
 
-      const parts = token.split(".");
-      const payload = JSON.parse(atob(parts[1]));
-      setUserId(payload.userId);
+      setUserId(authResult.user.id);
 
       const snippetId = params.snippetId as string;
       const result = await getSnippet(snippetId);
       if (result.snippet) {
         const snip = result.snippet as unknown as Snippet;
         setSnippet(snip);
-        setIsFavorite(snip.favorites && snip.favorites.length > 0);
+        setIsFavorite((snip.favorites?.length ?? 0) > 0);
       }
     } catch (error) {
       console.error("Failed to load snippet:", error);
@@ -65,7 +76,11 @@ export default function SnippetDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [params, router]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   async function handleCopyCode() {
     if (snippet) {
@@ -85,15 +100,13 @@ export default function SnippetDetailPage() {
   async function handleShare() {
     if (snippet) {
       const result = await toggleSnippetVisibility(snippet.id, !snippet.isPublic);
-      // @ts-ignore
       if (result.snippet) {
-        // @ts-ignore
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
         const shareLink = result.snippet.shareToken
-          ? generateShareLink(result.snippet.shareToken)
+          ? `${baseUrl}/shared/${result.snippet.shareToken}`
           : "";
         if (shareLink) {
-          navigator.clipboard.writeText(shareLink);
-          alert("Share link copied to clipboard!");
+          await copyShareLink(shareLink);
         }
         loadData();
       }
@@ -210,8 +223,8 @@ export default function SnippetDetailPage() {
             {snippet.shareToken && (
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(generateShareLink(snippet.shareToken!));
-                  alert("Share link copied!");
+                  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+                  copyShareLink(`${baseUrl}/shared/${snippet.shareToken}`);
                 }}
                 className="ml-2 text-emerald-600 hover:text-emerald-800 font-bold"
               >

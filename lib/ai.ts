@@ -40,9 +40,36 @@ The JSON structure must be exactly:
 
 export async function explainCode(
   code: string,
-  language: string
+  language: string,
+  explanationLanguage = "English"
 ): Promise<ExplanationResponse> {
   try {
+    const responseLanguageInstruction =
+      explanationLanguage === "Lazy Hindi (Romanized)"
+        ? `
+Write all user-facing text fields in colloquial Hindi using only English letters (Roman script).
+Tone: natural and friendly, like everyday spoken Hinglish.
+Example style: "kya ho raha hai", "ye line array ko sort karti hai".
+- summary
+- lineExplanations[].explanation
+- improvements[]
+Keep code snippets unchanged and keep complexity value strictly one of: Simple, Moderate, Complex.`
+        : explanationLanguage === "Lazy Marathi (Romanized)"
+        ? `
+Write all user-facing text fields in colloquial Marathi using only English letters (Roman script).
+Tone: natural and friendly, like everyday spoken Marathi.
+Example style: "kai zhala re", "hi line list filter karte".
+- summary
+- lineExplanations[].explanation
+- improvements[]
+Keep code snippets unchanged and keep complexity value strictly one of: Simple, Moderate, Complex.`
+        : `
+Write all user-facing text fields in ${explanationLanguage}:
+- summary
+- lineExplanations[].explanation
+- improvements[]
+Keep code snippets unchanged and keep complexity value strictly one of: Simple, Moderate, Complex.`;
+
     const userPrompt = language === "auto" 
       ? `Analyze this code, detect its programming language, and explain it:
 
@@ -50,12 +77,16 @@ export async function explainCode(
 ${code}
 \`\`\`
 
+${responseLanguageInstruction}
+
 Provide the explanation in the exact JSON format specified, with line numbers corresponding to the code.`
       : `Analyze and explain this ${language} code:
 
 \`\`\`${language}
 ${code}
 \`\`\`
+
+${responseLanguageInstruction}
 
 Provide the explanation in the exact JSON format specified, with line numbers corresponding to the code.`;
 

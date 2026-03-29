@@ -29,83 +29,96 @@ export function SnippetCard({
   onEdit,
   onDelete,
   onShare,
+  shareToken,
 }: SnippetCardProps) {
   return (
-    <div className="group bg-white rounded-xl border-2 border-gray-200 overflow-hidden hover:border-primary-400 transition-all duration-300 hover:shadow-lg hover:shadow-primary-500/10 hover:-translate-y-1 card-hover">
+    <article className="group rounded-xl border border-cyan-500/20 bg-slate-900/60 backdrop-blur overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/10 hover:border-cyan-400/40">
+      <div className="h-1 bg-linear-to-r from-cyan-500 via-indigo-500 to-purple-500" />
+      
       {/* Header */}
-      <div className="p-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-        <div className="flex items-start justify-between gap-4">
+      <div className="p-4 border-b border-slate-700/30 bg-slate-950/60">
+        <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <Link href={`/dashboard/snippet/${id}`}>
-              <h3 className="text-lg font-bold text-gray-900 group-hover:text-primary-600 truncate cursor-pointer transition-colors">
+              <h3 className="text-base font-bold text-white group-hover:text-cyan-300 truncate cursor-pointer transition-colors">
                 {title}
               </h3>
             </Link>
-            <p className="text-xs text-gray-600 mt-2 flex items-center gap-2">
-              <span>📅</span>
-              {formatDate(createdAt)}
-            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <p className="text-xs text-slate-400">
+                📅 {formatDate(createdAt)}
+              </p>
+              {shareToken && (
+                <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-semibold border border-cyan-500/30">
+                  Public
+                </span>
+              )}
+            </div>
           </div>
-          <span className="px-3 py-1.5 bg-gradient-to-r from-primary-100 to-emerald-100 text-primary-700 text-xs font-semibold rounded-full whitespace-nowrap border border-primary-300 flex-shrink-0">
+          <span className="px-3 py-1.5 bg-indigo-500/20 text-indigo-300 text-xs font-semibold rounded-lg whitespace-nowrap border border-indigo-500/30 shrink-0">
             {getLanguageName(language)}
           </span>
         </div>
       </div>
 
       {/* Code Preview */}
-      <div className="px-5 py-4 bg-gray-50 border-b border-gray-200 group-hover:bg-primary-50 transition-colors">
-        <pre className="text-xs text-gray-700 overflow-hidden font-mono leading-relaxed">
+      <div className="px-4 py-3 bg-black border-b border-slate-700/30">
+        <pre className="text-xs text-slate-500 overflow-hidden font-mono leading-relaxed">
           <code>{truncateText(code, 200)}</code>
         </pre>
       </div>
 
       {/* Actions */}
-      <div className="px-5 py-4 bg-gradient-to-r from-gray-50 to-white flex items-center justify-end gap-2">
+      <div className="px-4 py-3 bg-slate-950/80 flex items-center justify-end gap-2">
         {onFavorite && (
           <button
+            type="button"
             onClick={() => onFavorite(id)}
-            className={`p-2.5 rounded-lg transition-all duration-200 transform hover:scale-110 ${
+            className={`p-2 rounded-lg transition-all duration-200 ${
               isFavorite
-                ? "text-emerald-600 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300"
-                : "text-gray-500 hover:text-emerald-600 hover:bg-emerald-100 border border-transparent hover:border-emerald-300"
+                ? "text-rose-400 bg-rose-500/20 border border-rose-500/30 hover:bg-rose-500/30"
+                : "text-slate-400 hover:text-rose-400 hover:bg-rose-500/20 border border-transparent hover:border-rose-500/30"
             }`}
             title="Add to favorites"
           >
-            <Heart size={18} fill={isFavorite ? "currentColor" : "none"} />
+            <Heart size={16} fill={isFavorite ? "currentColor" : "none"} />
           </button>
         )}
         {onShare && (
           <button
+            type="button"
             onClick={() => onShare(id)}
-            className="p-2.5 rounded-lg text-gray-500 hover:text-primary-600 hover:bg-primary-100 border border-transparent hover:border-primary-300 transition-all duration-200 transform hover:scale-110"
+            className="p-2 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/20 border border-transparent hover:border-cyan-500/30 transition-all duration-200"
             title="Share snippet"
           >
-            <Share2 size={18} />
+            <Share2 size={16} />
           </button>
         )}
         {onEdit && (
           <button
+            type="button"
             onClick={() => onEdit(id)}
-            className="p-2.5 rounded-lg text-gray-500 hover:text-primary-600 hover:bg-primary-100 border border-transparent hover:border-primary-300 transition-all duration-200 transform hover:scale-110"
+            className="p-2 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/20 border border-transparent hover:border-cyan-500/30 transition-all duration-200"
             title="Edit snippet"
           >
-            <Edit2 size={18} />
+            <Edit2 size={16} />
           </button>
         )}
         {onDelete && (
           <button
+            type="button"
             onClick={() => {
               if (confirm("Delete this snippet?")) {
                 onDelete(id);
               }
             }}
-            className="p-2.5 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-100 border border-transparent hover:border-red-300 transition-all duration-200 transform hover:scale-110"
+            className="p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/20 border border-transparent hover:border-rose-500/30 transition-all duration-200"
             title="Delete snippet"
           >
-            <Trash2 size={18} />
+            <Trash2 size={16} />
           </button>
         )}
       </div>
-    </div>
+    </article>
   );
 }

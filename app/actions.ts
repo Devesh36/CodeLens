@@ -1,8 +1,34 @@
 "use server";
 
 import { prisma } from "@/lib/db";
-import { hashPassword, verifyPassword, signJWT } from "@/lib/auth";
+import { hashPassword, verifyPassword, signJWT, verifyJWT } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
+import { randomUUID } from "crypto";
+
+const AUTH_COOKIE_NAME = "auth";
+const AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
+
+async function setAuthCookie(token: string) {
+  const cookieStore = await cookies();
+  cookieStore.set(AUTH_COOKIE_NAME, token, {
+    httpOnly: true,
+    sameSite: "strict",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: AUTH_COOKIE_MAX_AGE,
+  });
+}
+
+async function requireAuthUserId(): Promise<string | null> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
+  if (!token) return null;
+
+  const payload = await verifyJWT(token);
+  if (!payload?.userId) return null;
+  return String(payload.userId);
+}
 
 export async function registerUser(email: string, password: string, name: string) {
   try {
@@ -17,8 +43,9 @@ export async function registerUser(email: string, password: string, name: string
     });
 
     const token = await signJWT({ userId: user.id, email: user.email });
+    await setAuthCookie(token);
     return { token, user: { id: user.id, email: user.email, name: user.name } };
-  } catch (error) {
+  } catch {
     return { error: "Failed to register user" };
   }
 }
@@ -36,10 +63,41 @@ export async function loginUser(email: string, password: string) {
     }
 
     const token = await signJWT({ userId: user.id, email: user.email });
+    await setAuthCookie(token);
     return { token, user: { id: user.id, email: user.email, name: user.name } };
-  } catch (error) {
+  } catch {
     return { error: "Failed to login" };
   }
+}
+
+export async function getCurrentUser() {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
+    if (!token) {
+      return { user: null };
+    }
+
+    const payload = await verifyJWT(token);
+    if (!payload?.userId || !payload?.email) {
+      return { user: null };
+    }
+
+    return {
+      user: {
+        id: String(payload.userId),
+        email: String(payload.email),
+      },
+    };
+  } catch {
+    return { user: null };
+  }
+}
+
+export async function logoutUser() {
+  const cookieStore = await cookies();
+  cookieStore.delete(AUTH_COOKIE_NAME);
+  return { success: true };
 }
 
 export async function createSnippet(
@@ -48,9 +106,14 @@ export async function createSnippet(
   code: string,
   language: string,
   explanation: string,
-  explanationJson: any | null
+  explanationJson: unknown | null
 ) {
   try {
+    const authUserId = await requireAuthUserId();
+    if (!authUserId) {
+      return { error: "Unauthorized" };
+    }
+
     const snippet = await prisma.snippet.create({
       data: {
         title,
@@ -60,12 +123,12 @@ export async function createSnippet(
         // Prisma's typings don't accept `null` directly for JSON input —
         // pass `undefined` when there's no JSON value so the column becomes null.
         explanationJson: explanationJson ?? undefined,
-        userId,
+        userId: authUserId,
       },
     });
     revalidatePath("/dashboard");
     return { snippet };
-  } catch (error) {
+  } catch {
     return { error: "Failed to create snippet" };
   }
 }
@@ -76,9 +139,22 @@ export async function updateSnippet(
   code: string,
   language: string,
   explanation: string,
-  explanationJson: any | null
+  explanationJson: unknown | null
 ) {
   try {
+    const authUserId = await requireAuthUserId();
+    if (!authUserId) {
+      return { error: "Unauthorized" };
+    }
+
+    const existing = await prisma.snippet.findFirst({
+      where: { id: snippetId, userId: authUserId },
+      select: { id: true },
+    });
+    if (!existing) {
+      return { error: "Snippet not found" };
+    }
+
     const snippet = await prisma.snippet.update({
       where: { id: snippetId },
       data: {
@@ -92,48 +168,84 @@ export async function updateSnippet(
     revalidatePath("/dashboard");
     revalidatePath(`/snippet/${snippetId}`);
     return { snippet };
-  } catch (error) {
+  } catch {
     return { error: "Failed to update snippet" };
   }
 }
 
 export async function deleteSnippet(snippetId: string) {
   try {
-    await prisma.snippet.delete({ where: { id: snippetId } });
+    const authUserId = await requireAuthUserId();
+    if (!authUserId) {
+      return { error: "Unauthorized" };
+    }
+
+    await prisma.snippet.deleteMany({ where: { id: snippetId, userId: authUserId } });
     revalidatePath("/dashboard");
     return { success: true };
-  } catch (error) {
+  } catch {
     return { error: "Failed to delete snippet" };
   }
 }
 
 export async function getSnippet(snippetId: string) {
   try {
-    const snippet = await prisma.snippet.findUnique({
-      where: { id: snippetId },
-      include: { tags: { include: { tag: true } } },
+    const authUserId = await requireAuthUserId();
+    if (!authUserId) {
+      return { error: "Unauthorized" };
+    }
+
+    const snippet = await prisma.snippet.findFirst({
+      where: { id: snippetId, userId: authUserId },
+      include: {
+        tags: { include: { tag: true } },
+        favorites: { where: { userId: authUserId }, select: { id: true } },
+        _count: { select: { favorites: true } },
+      },
     });
     return { snippet };
-  } catch (error) {
+  } catch {
     return { error: "Failed to fetch snippet" };
   }
 }
 
-export async function getUserSnippets(userId: string) {
+export async function getUserSnippets() {
   try {
+    const authUserId = await requireAuthUserId();
+    if (!authUserId) {
+      return { error: "Unauthorized" };
+    }
+
     const snippets = await prisma.snippet.findMany({
-      where: { userId },
-      include: { tags: { include: { tag: true } }, _count: { select: { favorites: true } } },
+      where: { userId: authUserId },
+      include: {
+        tags: { include: { tag: true } },
+        favorites: { where: { userId: authUserId }, select: { id: true } },
+        _count: { select: { favorites: true } },
+      },
       orderBy: { createdAt: "desc" },
     });
     return { snippets };
-  } catch (error) {
+  } catch {
     return { error: "Failed to fetch snippets" };
   }
 }
 
 export async function addTagToSnippet(snippetId: string, tagName: string) {
   try {
+    const authUserId = await requireAuthUserId();
+    if (!authUserId) {
+      return { error: "Unauthorized" };
+    }
+
+    const ownsSnippet = await prisma.snippet.findFirst({
+      where: { id: snippetId, userId: authUserId },
+      select: { id: true },
+    });
+    if (!ownsSnippet) {
+      return { error: "Snippet not found" };
+    }
+
     let tag = await prisma.tag.findUnique({ where: { name: tagName } });
     if (!tag) {
       tag = await prisma.tag.create({ data: { name: tagName } });
@@ -144,38 +256,64 @@ export async function addTagToSnippet(snippetId: string, tagName: string) {
     });
     revalidatePath(`/snippet/${snippetId}`);
     return { success: true };
-  } catch (error) {
+  } catch {
     return { error: "Failed to add tag" };
   }
 }
 
 export async function removeTagFromSnippet(snippetId: string, tagId: string) {
   try {
+    const authUserId = await requireAuthUserId();
+    if (!authUserId) {
+      return { error: "Unauthorized" };
+    }
+
+    const ownsSnippet = await prisma.snippet.findFirst({
+      where: { id: snippetId, userId: authUserId },
+      select: { id: true },
+    });
+    if (!ownsSnippet) {
+      return { error: "Snippet not found" };
+    }
+
     await prisma.snippetTag.deleteMany({
       where: { snippetId, tagId },
     });
     revalidatePath(`/snippet/${snippetId}`);
     return { success: true };
-  } catch (error) {
+  } catch {
     return { error: "Failed to remove tag" };
   }
 }
 
 export async function toggleFavorite(userId: string, snippetId: string) {
   try {
+    const authUserId = await requireAuthUserId();
+    if (!authUserId) {
+      return { error: "Unauthorized" };
+    }
+
+    const snippet = await prisma.snippet.findFirst({
+      where: { id: snippetId, userId: authUserId },
+      select: { id: true },
+    });
+    if (!snippet) {
+      return { error: "Snippet not found" };
+    }
+
     const existing = await prisma.favorite.findUnique({
-      where: { userId_snippetId: { userId, snippetId } },
+      where: { userId_snippetId: { userId: authUserId, snippetId } },
     });
 
     if (existing) {
       await prisma.favorite.delete({ where: { id: existing.id } });
     } else {
-      await prisma.favorite.create({ data: { userId, snippetId } });
+      await prisma.favorite.create({ data: { userId: authUserId, snippetId } });
     }
     revalidatePath("/dashboard");
     revalidatePath(`/snippet/${snippetId}`);
     return { success: true };
-  } catch (error) {
+  } catch {
     return { error: "Failed to toggle favorite" };
   }
 }
@@ -185,7 +323,20 @@ export async function toggleSnippetVisibility(
   isPublic: boolean
 ) {
   try {
-    const shareToken = isPublic ? Math.random().toString(36).slice(2) : null;
+    const authUserId = await requireAuthUserId();
+    if (!authUserId) {
+      return { error: "Unauthorized" };
+    }
+
+    const existing = await prisma.snippet.findFirst({
+      where: { id: snippetId, userId: authUserId },
+      select: { id: true },
+    });
+    if (!existing) {
+      return { error: "Snippet not found" };
+    }
+
+    const shareToken = isPublic ? randomUUID() : null;
     const snippet = await prisma.snippet.update({
       where: { id: snippetId },
       data: { isPublic, shareToken },
@@ -193,7 +344,7 @@ export async function toggleSnippetVisibility(
     revalidatePath(`/snippet/${snippetId}`);
     revalidatePath("/dashboard");
     return { snippet };
-  } catch (error) {
+  } catch {
     return { error: "Failed to update snippet visibility" };
   }
 }
@@ -208,7 +359,7 @@ export async function getPublicSnippet(shareToken: string) {
       return { error: "Snippet not found" };
     }
     return { snippet };
-  } catch (error) {
+  } catch {
     return { error: "Failed to fetch snippet" };
   }
 }

@@ -3,10 +3,30 @@
 import { useRef, useEffect, useState } from "react";
 import { PROGRAMMING_LANGUAGES, getLanguageName } from "@/lib/utils";
 
+interface EditorInstance {
+  getValue: () => string;
+  setValue: (value: string) => void;
+  onDidChangeModelContent: (callback: () => void) => { dispose: () => void };
+  dispose: () => void;
+  getModel: () => unknown;
+}
+
+interface MonacoLike {
+  editor: {
+    create: (element: HTMLElement, options: Record<string, unknown>) => EditorInstance;
+    defineTheme: (name: string, themeData: Record<string, unknown>) => void;
+    setModelLanguage: (model: unknown, language: string) => void;
+  };
+}
+
 interface EditorProps {
   value: string;
   onChange: (value: string) => void;
   language: string;
+  onLanguageChange?: (language: string) => void;
+  insightLanguage?: string;
+  insightLanguageOptions?: string[];
+  onInsightLanguageChange?: (language: string) => void;
   onExplain: () => void;
   isLoading?: boolean;
 }
@@ -15,18 +35,29 @@ export function Editor({
   value,
   onChange,
   language,
+  onLanguageChange,
+  insightLanguage,
+  insightLanguageOptions = [],
+  onInsightLanguageChange,
   onExplain,
   isLoading = false,
 }: EditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
-  const editorInstanceRef = useRef<any>(null);
+  const editorInstanceRef = useRef<EditorInstance | null>(null);
   const [monacoLoaded, setMonacoLoaded] = useState(false);
 
   useEffect(() => {
     const loadMonaco = async () => {
       // Check if Monaco is already loaded
-      // @ts-expect-error - Monaco editor is loaded dynamically
-      if (window.monaco) {
+      const runtimeWindow = window as unknown as Window & {
+        monaco?: MonacoLike;
+        require?: {
+          config: (options: Record<string, unknown>) => void;
+          (deps: string[], callback: () => void): void;
+        };
+      };
+
+      if (runtimeWindow.monaco) {
         setMonacoLoaded(true);
         return;
       }
@@ -35,15 +66,16 @@ export function Editor({
       script.src =
         "https://cdn.jsdelivr.net/npm/monaco-editor@latest/min/vs/loader.min.js";
       script.onload = () => {
-        // `require` is injected by the Monaco loader script at runtime
-        const require = (window as any).require;
-        require.config({
+        const loader = runtimeWindow.require;
+        if (!loader) return;
+
+        loader.config({
           paths: {
             vs: "https://cdn.jsdelivr.net/npm/monaco-editor@latest/min/vs",
           },
         });
-        // call the loader registered by Monaco's loader script
-        require(["vs/editor/editor.main"], () => {
+
+        loader(["vs/editor/editor.main"], () => {
           setMonacoLoaded(true);
         });
       };
@@ -57,25 +89,47 @@ export function Editor({
   useEffect(() => {
     if (!monacoLoaded || !editorRef.current || editorInstanceRef.current) return;
 
-    // @ts-expect-error - Monaco editor is loaded dynamically
-    const editor = window.monaco.editor.create(editorRef.current, {
-      value: value,
-      language: language === "auto" ? "javascript" : language,
-      theme: "vs",
+    const runtimeWindow = window as Window & { monaco?: MonacoLike };
+    const monaco = runtimeWindow.monaco;
+    if (!monaco) return;
+
+    monaco.editor.defineTheme("codelens-dark", {
+      base: "vs-dark",
+      inherit: true,
+      rules: [
+        { token: "comment", foreground: "5a6784" },
+        { token: "keyword", foreground: "7dd3fc" },
+        { token: "string", foreground: "86efac" },
+        { token: "number", foreground: "c4b5fd" },
+      ],
+      colors: {
+        "editor.background": "#020b1f",
+        "editor.lineHighlightBackground": "#0b1732",
+        "editorCursor.foreground": "#67e8f9",
+        "editorLineNumber.foreground": "#3b4764",
+        "editorLineNumber.activeForeground": "#7dd3fc",
+        "editor.selectionBackground": "#1d3a73",
+      },
+    });
+
+    const editor = monaco.editor.create(editorRef.current, {
+      value: "",
+      language: "javascript",
+      theme: "codelens-dark",
       automaticLayout: true,
-      minimap: { enabled: true },
+      minimap: { enabled: false },
       lineNumbers: "on",
-      fontSize: 15,
+      fontSize: 14,
       fontFamily: '"Fira Code", "SF Mono", "Menlo", "Monaco", "Courier New", monospace',
       fontLigatures: true,
-      lineHeight: 24,
-      letterSpacing: 0.5,
+      lineHeight: 22,
+      letterSpacing: 0.3,
       scrollBeyondLastLine: false,
       wordWrap: "on",
       smoothScrolling: true,
       cursorBlinking: "smooth",
       cursorSmoothCaretAnimation: "on",
-      renderLineHighlight: "all",
+      renderLineHighlight: "line",
       padding: { top: 16, bottom: 16 },
       bracketPairColorization: {
         enabled: true,
@@ -93,13 +147,21 @@ export function Editor({
       editor.dispose();
       editorInstanceRef.current = null;
     };
-  }, [monacoLoaded]);
+  }, [monacoLoaded, onChange]);
+
+  // Keep model value in sync when parent updates programmatically.
+  useEffect(() => {
+    if (!editorInstanceRef.current) return;
+    if (editorInstanceRef.current.getValue() === value) return;
+    editorInstanceRef.current.setValue(value);
+  }, [value]);
 
   // Update language when it changes
   useEffect(() => {
     if (!editorInstanceRef.current) return;
-    // @ts-expect-error - Monaco editor is loaded dynamically
-    const monaco = window.monaco;
+    const runtimeWindow = window as Window & { monaco?: MonacoLike };
+    const monaco = runtimeWindow.monaco;
+    if (!monaco) return;
     const model = editorInstanceRef.current.getModel();
     if (model && language !== "auto") {
       monaco.editor.setModelLanguage(model, language);
@@ -107,37 +169,69 @@ export function Editor({
   }, [language]);
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-lg overflow-hidden border border-gray-200 shadow-sm">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between gap-4 bg-white px-6 py-3 border-b border-gray-200">
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-semibold text-gray-700">
-            Language:
-          </span>
-          <span className="px-3 py-1.5 bg-gray-50 text-gray-900 rounded-lg border border-gray-200 text-sm font-medium">
-            {language === "auto" ? "Auto-detect" : getLanguageName(language)}
-          </span>
+    <div className="min-h-0 h-full flex flex-col overflow-hidden rounded-xl border border-cyan-500/10 bg-[#030d23] shadow-[inset_0_0_0_1px_rgba(125,211,252,0.04)]">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 px-3 sm:px-4 py-2.5 border-b border-cyan-500/10 bg-slate-900/70">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="h-2.5 w-2.5 rounded-full bg-rose-400/70" />
+          <span className="h-2.5 w-2.5 rounded-full bg-amber-400/70" />
+          <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/70" />
+          <span className="ml-2 text-[11px] sm:text-xs text-slate-400 uppercase tracking-[0.12em] truncate">Code Workspace</span>
         </div>
-        <button
-          onClick={onExplain}
-          disabled={isLoading || !value.trim()}
-          className="px-6 py-2 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all flex items-center gap-2 text-sm"
-        >
-          {isLoading ? (
+
+        <div className="flex flex-wrap items-center gap-2">
+          <label htmlFor="language" className="text-xs text-slate-400 uppercase tracking-[0.12em]">
+            Language
+          </label>
+          <select
+            id="language"
+            value={language}
+            onChange={(e) => onLanguageChange?.(e.target.value)}
+            className="h-8 min-w-30 px-2.5 rounded-md border border-slate-700 bg-slate-950 text-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-400"
+            title="Choose programming language"
+          >
+            <option value="auto">Auto Detect</option>
+            {PROGRAMMING_LANGUAGES.map((lang) => (
+              <option key={lang} value={lang}>
+                {getLanguageName(lang)}
+              </option>
+            ))}
+          </select>
+
+          {onInsightLanguageChange && (
             <>
-              <div className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-b-transparent" />
-              Analyzing...
+              <label htmlFor="insight-language" className="text-xs text-slate-400 uppercase tracking-[0.12em]">
+                Insight
+              </label>
+              <select
+                id="insight-language"
+                value={insightLanguage}
+                onChange={(e) => onInsightLanguageChange(e.target.value)}
+                className="h-8 min-w-35 px-2.5 rounded-md border border-slate-700 bg-slate-950 text-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                title="Choose insight language"
+              >
+                {insightLanguageOptions.map((lang) => (
+                  <option key={lang} value={lang}>
+                    {lang}
+                  </option>
+                ))}
+              </select>
             </>
-          ) : (
-            "Explain Code"
           )}
-        </button>
+
+          <button
+            type="button"
+            onClick={onExplain}
+            disabled={isLoading || !value.trim()}
+            className="h-8 px-3 rounded-md bg-cyan-500/15 border border-cyan-400/25 text-cyan-100 text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-cyan-500/25 transition-colors"
+          >
+            {isLoading ? "Analyzing" : "Run"}
+          </button>
+        </div>
       </div>
 
-      {/* Editor Area */}
       <div
         ref={editorRef}
-        className="flex-1 bg-white min-h-96"
+        className="flex-1 min-h-80"
       />
     </div>
   );

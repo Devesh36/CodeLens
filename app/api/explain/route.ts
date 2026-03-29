@@ -1,22 +1,15 @@
 import { explainCode } from "@/lib/ai";
-import { verifyJWT, getTokenFromRequest } from "@/lib/auth";
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
-    // Optional authentication - allow both authenticated and anonymous requests
-    const token = getTokenFromRequest(request);
-    let userId = null;
-    
-    if (token) {
-      const payload = await verifyJWT(token);
-      if (payload) {
-        userId = payload.userId;
-      }
-    }
-
     const body = await request.json();
-    const { code, language } = body;
+    const { code, language, explanationLanguage } = body as {
+      code?: string;
+      language?: string;
+      explanationLanguage?: string;
+    };
 
     if (!code || !language) {
       return NextResponse.json(
@@ -26,7 +19,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Call Groq API (works for both authenticated and anonymous users)
-    const explanation = await explainCode(code, language);
+    const explanation = await explainCode(
+      code,
+      language,
+      explanationLanguage || "English"
+    );
 
     return NextResponse.json(explanation);
   } catch (error) {

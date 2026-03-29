@@ -1,7 +1,17 @@
 @import "tailwindcss";
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+
+@theme {
+  --color-primary-50: #ecfeff;
+  --color-primary-100: #cffafe;
+  --color-primary-200: #a5f3fc;
+  --color-primary-300: #67e8f9;
+  --color-primary-400: #22d3ee;
+  --color-primary-500: #06b6d4;
+  --color-primary-600: #0891b2;
+  --color-primary-700: #0e7490;
+  --color-primary-800: #155e75;
+  --color-primary-900: #164e63;
+}
 
 /* Custom animations */
 @layer utilities {
@@ -37,6 +47,10 @@
 
   .animate-blob {
     animation: blob 7s infinite;
+  }
+
+  .bg-gradient-light {
+    background-image: linear-gradient(120deg, #f8fafc 0%, #ecfeff 100%);
   }
 
   .animation-delay-200 {

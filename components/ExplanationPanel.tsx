@@ -1,17 +1,92 @@
 "use client";
 
-import { ExplanationResponse } from "@/lib/ai";
-import { Copy, Check } from "lucide-react";
+import type { ExplanationResponse } from "@/lib/ai";
+import { Bot, Check, Copy, Share2, Zap } from "lucide-react";
 import { useState } from "react";
 
 interface ExplanationPanelProps {
   explanation: ExplanationResponse | null;
   isLoading?: boolean;
+  onExplain?: () => void;
+  onCopyExplanation?: () => void;
+  onShareInsight?: () => void;
+  canExplain?: boolean;
+  hasExplanation?: boolean;
+}
+
+function getComplexityClass(complexity: string): string {
+  if (complexity === "Simple") {
+    return "border-emerald-400/30 bg-emerald-400/10 text-emerald-200";
+  }
+
+  if (complexity === "Moderate") {
+    return "border-amber-400/30 bg-amber-400/10 text-amber-200";
+  }
+
+  return "border-rose-400/30 bg-rose-400/10 text-rose-200";
+}
+
+function ActionBar({
+  onExplain,
+  onCopyExplanation,
+  onShareInsight,
+  canExplain,
+  hasExplanation,
+}: Pick<
+  ExplanationPanelProps,
+  "onExplain" | "onCopyExplanation" | "onShareInsight" | "canExplain" | "hasExplanation"
+>) {
+  if (!onExplain && !onCopyExplanation && !onShareInsight) return null;
+
+  return (
+    <div className="p-3 border-t border-cyan-500/10 bg-slate-950/85 flex flex-wrap gap-2">
+      {onExplain && (
+        <button
+          type="button"
+          onClick={onExplain}
+          disabled={!canExplain}
+          className="px-4 py-2.5 rounded-lg bg-linear-to-r from-indigo-500 to-violet-500 text-white font-semibold text-sm inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_24px_rgba(99,102,241,0.42)] hover:from-indigo-400 hover:to-violet-400 transition-all"
+        >
+          <Zap size={15} />
+          Explain Code
+        </button>
+      )}
+
+      {onCopyExplanation && (
+        <button
+          type="button"
+          onClick={onCopyExplanation}
+          disabled={!hasExplanation}
+          className="px-4 py-2.5 rounded-lg border border-slate-700 bg-slate-900 text-slate-200 text-sm font-medium inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-800 transition-colors"
+        >
+          <Copy size={15} />
+          Copy Explanation
+        </button>
+      )}
+
+      {onShareInsight && (
+        <button
+          type="button"
+          onClick={onShareInsight}
+          disabled={!hasExplanation}
+          className="px-4 py-2.5 rounded-lg border border-slate-700 bg-slate-900 text-slate-200 text-sm font-medium inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-800 transition-colors"
+        >
+          <Share2 size={15} />
+          Share Insight
+        </button>
+      )}
+    </div>
+  );
 }
 
 export function ExplanationPanel({
   explanation,
   isLoading = false,
+  onExplain,
+  onCopyExplanation,
+  onShareInsight,
+  canExplain = false,
+  hasExplanation = false,
 }: ExplanationPanelProps) {
   const [copied, setCopied] = useState(false);
 
@@ -23,14 +98,14 @@ export function ExplanationPanel({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
+      <div className="h-full rounded-xl border border-cyan-500/10 bg-[#040f28] p-6 flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block relative w-10 h-10 mb-4">
-            <div className="absolute inset-0 bg-teal-600 rounded-full animate-spin" style={{ animation: "spin 1s linear infinite" }} />
-            <div className="absolute inset-1 bg-white rounded-full" />
+            <div className="absolute inset-0 bg-cyan-500 rounded-full animate-spin" />
+            <div className="absolute inset-1 bg-[#040f28] rounded-full" />
           </div>
-          <p className="text-gray-900 font-semibold">Analyzing code</p>
-          <p className="text-gray-600 text-sm mt-1">This usually takes a few seconds</p>
+          <p className="text-slate-100 font-semibold">Analyzing code</p>
+          <p className="text-slate-400 text-sm mt-1">Extracting insights from structure, context, and complexity</p>
         </div>
       </div>
     );
@@ -38,112 +113,126 @@ export function ExplanationPanel({
 
   if (!explanation) {
     return (
-      <div className="flex items-center justify-center h-full bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
-        <div className="text-center max-w-md">
-          <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          <p className="text-gray-900 font-semibold text-lg">
-            Ready to analyze
-          </p>
-          <p className="text-gray-600 text-sm mt-2">Write code and click "Explain" to see AI-powered analysis</p>
+      <div className="h-full rounded-xl border border-cyan-500/10 bg-[#040f28] overflow-hidden flex flex-col">
+        <div className="p-5 md:p-6 space-y-5 flex-1">
+          <div className="flex items-center justify-between pb-4 border-b border-cyan-500/10">
+            <h2 className="text-2xl font-bold text-slate-100 inline-flex items-center gap-2">
+              <Bot size={20} className="text-cyan-300" />
+              AI Insights
+            </h2>
+            <span className="px-3 py-1 rounded-full text-[11px] uppercase tracking-wide font-semibold border border-slate-600 bg-slate-800 text-slate-300">
+              Waiting for analysis
+            </span>
+          </div>
+
+          <div className="rounded-xl border border-cyan-500/10 bg-slate-900/70 p-4">
+            <p className="text-slate-300 leading-relaxed text-sm">
+              Run analysis to generate semantic insights, line-level explanations, and optimization recommendations.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div className="rounded-xl border border-cyan-500/10 bg-slate-900/65 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-cyan-300">L1-2</p>
+              <h3 className="text-slate-100 font-semibold mt-1 text-sm">Asynchronous Entry</h3>
+              <p className="text-slate-400 mt-2 text-sm leading-relaxed">Defines a high-level orchestration flow. The use of async indicates non-blocking operations.</p>
+            </div>
+            <div className="rounded-xl border border-cyan-500/10 bg-slate-900/45 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">L4-7</p>
+              <div className="h-3 rounded bg-slate-800 mb-2" />
+              <div className="h-3 rounded bg-slate-800 w-2/3" />
+            </div>
+            <div className="rounded-xl border border-cyan-500/10 bg-slate-900/65 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-cyan-300">L13-17</p>
+              <h3 className="text-slate-100 font-semibold mt-1 text-sm">Data Transformation</h3>
+              <p className="text-slate-400 mt-2 text-sm leading-relaxed">Maps the AI response into a normalized structure for UI rendering and scoring.</p>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-cyan-500/10 bg-slate-900/65 p-4">
+            <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-300 mb-3">Optimization Tips</h3>
+            <ul className="space-y-2">
+              <li className="text-sm text-slate-300 flex items-start gap-2">
+                <span className="text-cyan-300 mt-0.5">◦</span>
+                <span>Add a retry mechanism for transient AI service errors.</span>
+              </li>
+              <li className="text-sm text-slate-300 flex items-start gap-2">
+                <span className="text-cyan-300 mt-0.5">◦</span>
+                <span>Use a circuit breaker pattern for frequently called analysis paths.</span>
+              </li>
+            </ul>
+          </div>
         </div>
+
+        <ActionBar
+          onExplain={onExplain}
+          onCopyExplanation={onCopyExplanation}
+          onShareInsight={onShareInsight}
+          canExplain={canExplain}
+          hasExplanation={hasExplanation}
+        />
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg overflow-auto h-full border border-gray-200 shadow-sm">
-      <div className="p-6 space-y-6">
-        {/* Summary */}
-        <div className="pb-5 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900 mb-3">Summary</h2>
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <p className="text-gray-700 leading-relaxed text-sm">
-              {explanation.summary}
-            </p>
-          </div>
-        </div>
-
-        {/* Complexity Badge */}
-        <div className="flex items-center justify-between pb-5 border-b border-gray-200">
-          <h3 className="text-base font-semibold text-gray-900">Complexity</h3>
-          <span
-            className={`px-3 py-1 rounded-full text-xs font-semibold ${
-              explanation.complexity === "Simple"
-                ? "bg-green-100 text-green-700"
-                : explanation.complexity === "Moderate"
-                ? "bg-yellow-100 text-yellow-700"
-                : "bg-red-100 text-red-700"
-            }`}
-          >
-            {explanation.complexity}
+    <div className="h-full rounded-xl border border-cyan-500/10 bg-[#040f28] overflow-hidden flex flex-col">
+      <div className="p-5 md:p-6 space-y-5 flex-1 overflow-auto">
+        <div className="flex items-center justify-between pb-4 border-b border-cyan-500/10">
+          <h2 className="text-2xl font-bold text-slate-100 inline-flex items-center gap-2">
+            <Bot size={20} className="text-cyan-300" />
+            AI Insights
+          </h2>
+          <span className={`px-3 py-1 rounded-full text-[11px] uppercase tracking-wide font-semibold border ${getComplexityClass(explanation.complexity)}`}>
+            {explanation.complexity} Complexity
           </span>
         </div>
 
-        {/* Line-by-line Explanations */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-gray-900">Line-by-Line Analysis</h2>
-            <span className="text-gray-600 text-xs bg-gray-100 px-2 py-1 rounded">
-              {explanation.lineExplanations.length} lines
-            </span>
-          </div>
-          <div className="space-y-3">
-            {explanation.lineExplanations.map((item, index) => (
-              <div
-                key={index}
-                className="group bg-gray-50 rounded-lg p-3 border border-gray-200 hover:border-teal-300 hover:bg-teal-50/50 transition-all"
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center justify-center w-6 h-6 bg-teal-600 text-white rounded text-xs font-semibold">
-                      {item.line}
-                    </span>
-                    <span className="text-gray-600 text-xs font-medium">Line {item.line}</span>
-                  </div>
-                  <button
-                    onClick={() => copyToClipboard(item.explanation)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-white rounded"
-                    title="Copy explanation"
-                    type = "button"
-                  >
-                    {copied ? (
-                      <Check size={14} className="text-teal-600" />
-                    ) : (
-                      <Copy size={14} className="text-gray-500" />
-                    )}
-                  </button>
-                </div>
-                {item.code && (
-                  <div className="mb-2 bg-white border border-gray-200 rounded px-3 py-2">
-                    <code className="text-xs font-mono text-gray-800">{item.code}</code>
-                  </div>
-                )}
-                <p className="text-gray-700 text-sm leading-relaxed">
-                  {item.explanation}
-                </p>
-              </div>
-            ))}
-          </div>
+        <div className="rounded-xl border border-cyan-500/10 bg-slate-900/70 p-4">
+          <p className="text-slate-300 leading-relaxed text-sm">{explanation.summary}</p>
         </div>
 
-        {/* Improvements */}
-        <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 mt-5">
-          <h2 className="text-base font-bold text-gray-900 mb-3">Suggested Improvements</h2>
+        <div className="space-y-3">
+          {explanation.lineExplanations.map((item) => (
+            <div key={`${item.line}-${item.code}`} className="rounded-xl border border-cyan-500/10 bg-slate-900/65 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-cyan-300">L{item.line}</p>
+                <button
+                  onClick={() => copyToClipboard(item.explanation)}
+                  className="p-1 rounded hover:bg-slate-800 transition-colors"
+                  title="Copy explanation"
+                  type="button"
+                >
+                  {copied ? <Check size={14} className="text-cyan-300" /> : <Copy size={14} className="text-slate-400" />}
+                </button>
+              </div>
+
+              <h3 className="text-slate-100 font-semibold mt-1 text-sm">{item.code?.trim() ? item.code.trim() : "Code Insight"}</h3>
+              <p className="text-slate-400 mt-2 text-sm leading-relaxed">{item.explanation}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="rounded-xl border border-cyan-500/10 bg-slate-900/65 p-4">
+          <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-300 mb-3">Optimization Tips</h3>
           <ul className="space-y-2">
-            {explanation.improvements.map((improvement, index) => (
-              <li
-                key={improvement }
-                className="flex items-start gap-2 text-gray-700 text-sm"
-              >
-                <span className="text-teal-600 font-bold mt-0.5 flex-shrink-0">•</span>
+            {explanation.improvements.map((improvement) => (
+              <li key={improvement} className="text-sm text-slate-300 flex items-start gap-2">
+                <span className="text-cyan-300 mt-0.5">◦</span>
                 <span>{improvement}</span>
               </li>
             ))}
           </ul>
         </div>
       </div>
+
+      <ActionBar
+        onExplain={onExplain}
+        onCopyExplanation={onCopyExplanation}
+        onShareInsight={onShareInsight}
+        canExplain={canExplain}
+        hasExplanation={hasExplanation}
+      />
     </div>
   );
 }
