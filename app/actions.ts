@@ -363,3 +363,33 @@ export async function getPublicSnippet(shareToken: string) {
     return { error: "Failed to fetch snippet" };
   }
 }
+
+export async function importSnippets(snippetsToImport: any[]) {
+  try {
+    const authUserId = await requireAuthUserId();
+    if (!authUserId) {
+      return { error: "Unauthorized" };
+    }
+
+    if (!snippetsToImport || snippetsToImport.length === 0) {
+      return { success: true, imported: 0 };
+    }
+
+    await prisma.snippet.createMany({
+      data: snippetsToImport.map((s) => ({
+        title: s.title || "Untitled Snippet",
+        code: s.code || "",
+        language: s.language || "javascript",
+        explanation: s.explanation || "",
+        explanationJson: s.explanationJson ?? undefined,
+        userId: authUserId,
+      })),
+    });
+
+    revalidatePath("/dashboard");
+    return { success: true, imported: snippetsToImport.length };
+  } catch (error) {
+    console.error("Failed to import snippets:", error);
+    return { error: "Failed to import snippets" };
+  }
+}

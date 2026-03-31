@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { SnippetCard } from "@/components/SnippetCard";
 import {
@@ -10,9 +10,10 @@ import {
   toggleSnippetVisibility,
   getCurrentUser,
   logoutUser,
+  importSnippets,
 } from "@/app/actions";
 import Link from "next/link";
-import { Plus, Search, Settings, Bell, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Plus, Search, Settings, Bell, LogOut, PanelLeftClose, PanelLeftOpen, Download, Upload, ChevronDown } from "lucide-react";
 
 interface Snippet {
   id: string;
@@ -35,10 +36,64 @@ export default function DashboardPage() {
   const [filterLanguage, setFilterLanguage] = useState("all");
   const [view, setView] = useState<"all" | "favorites" | "recent">("all");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const explanationLanguage = typeof window !== "undefined" 
     ? localStorage.getItem("preferredExplanationLanguage") || "English"
     : "English";
+
+  const handleExport = () => {
+    const dataToExport = snippets.map((s) => ({
+      title: s.title,
+      code: s.code,
+      language: s.language,
+      explanation: (s as any).explanation || "",
+      explanationJson: (s as any).explanationJson || null,
+    }));
+    const dataStr = JSON.stringify(dataToExport, null, 2);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "codelens-snippets-backup.json";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setIsDropdownOpen(false);
+  };
+
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const importedSnippets = JSON.parse(text);
+
+      if (!Array.isArray(importedSnippets)) {
+        alert("Invalid file format. Expected a JSON array of snippets.");
+        return;
+      }
+
+      const result = await importSnippets(importedSnippets);
+      if (result.error) {
+        alert("Failed to import: " + result.error);
+      } else {
+        alert(`Import successful!\n\nImported: ${result.imported} snippets.`);
+        loadData();
+      }
+    } catch (error) {
+      console.error("Import error:", error);
+      alert("Failed to parse the JSON file.");
+    } finally {
+      setIsDropdownOpen(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
 
   async function copyShareLink(shareLink: string) {
     try {
@@ -334,9 +389,47 @@ export default function DashboardPage() {
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-900/50 border border-slate-700 text-slate-100 placeholder-slate-500 rounded-lg focus:outline-none focus:ring-1 focus:ring-cyan-400 focus:border-cyan-400 transition-all text-sm"
               />
             </div>
-            <button type="button" className="w-full sm:w-auto px-4 py-2.5 bg-cyan-500 hover:bg-cyan-600 text-slate-950 font-semibold rounded-lg transition-colors text-sm uppercase tracking-[0.08em]">
-              ⚡ Quick Action
-            </button>
+            <div className="relative w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => setIsDropdownOpen((prev) => !prev)}
+                className="w-full sm:w-auto px-4 py-2.5 bg-cyan-500 hover:bg-cyan-600 text-slate-950 font-semibold rounded-lg transition-colors text-sm uppercase tracking-[0.08em] flex items-center justify-between sm:justify-center gap-2"
+              >
+                ⚡ Quick Action
+                <ChevronDown size={16} className={`transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isDropdownOpen && (
+                <div className="absolute right-0 top-full mt-2 w-full sm:w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="p-1">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full px-3 py-2 text-left text-sm text-slate-300 hover:text-white hover:bg-slate-700 rounded-md transition-colors flex items-center gap-2"
+                    >
+                      <Upload size={16} className="text-cyan-400" />
+                      Import JSON
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleExport}
+                      className="w-full px-3 py-2 text-left text-sm text-slate-300 hover:text-white hover:bg-slate-700 rounded-md transition-colors flex items-center gap-2"
+                    >
+                      <Download size={16} className="text-cyan-400" />
+                      Export Snippets
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <input
+              type="file"
+              accept=".json"
+              className="hidden"
+              ref={fileInputRef}
+              onChange={handleImport}
+            />
           </div>
 
           {/* Snippets Grid */}
