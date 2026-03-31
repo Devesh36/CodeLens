@@ -243,9 +243,9 @@ function EditorPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-2 md:p-3">
-      <div className="min-h-[calc(100vh-1rem)] md:h-[calc(100vh-1rem)] rounded-2xl border border-cyan-500/15 bg-[radial-gradient(circle_at_0%_0%,rgba(56,189,248,0.12),transparent_30%),radial-gradient(circle_at_100%_100%,rgba(79,70,229,0.15),transparent_42%)] shadow-[0_25px_100px_rgba(2,132,199,0.14)] overflow-hidden">
-        <div className="grid min-h-[calc(100vh-1rem)] md:h-full grid-cols-[48px_1fr] md:grid-cols-[64px_1fr]">
+    <div className="h-screen overflow-hidden bg-slate-950 text-slate-100 p-2 md:p-3">
+      <div className="h-[calc(100vh-1rem)] rounded-2xl border border-cyan-500/15 bg-[radial-gradient(circle_at_0%_0%,rgba(56,189,248,0.12),transparent_30%),radial-gradient(circle_at_100%_100%,rgba(79,70,229,0.15),transparent_42%)] shadow-[0_25px_100px_rgba(2,132,199,0.14)] overflow-hidden">
+        <div className="grid h-full grid-cols-[48px_1fr] md:grid-cols-[64px_1fr]">
           <aside className="border-r border-cyan-500/10 bg-slate-900/85 flex flex-col items-center py-3 md:py-4 justify-between">
             <div className="space-y-3">
               <button type="button" title="Explorer" aria-label="Explorer" className="w-9 h-9 rounded-lg border border-cyan-500/35 bg-cyan-500/10 text-cyan-200 inline-flex items-center justify-center">
@@ -264,7 +264,7 @@ function EditorPageContent() {
           </aside>
 
           <main className="h-full min-w-0 grid grid-rows-[1fr_auto] bg-slate-950/90">
-            <section className="relative min-h-0 p-3 md:p-4">
+            <section className="relative min-h-0 h-full p-3 md:p-4 flex flex-col">
               <div className="mb-3 md:mb-0 md:absolute md:top-4 md:right-4 z-20 flex flex-wrap items-center gap-2 rounded-lg border border-slate-800/90 bg-slate-950/85 px-2 py-2 backdrop-blur">
                 <button
                   type="button"
@@ -343,7 +343,7 @@ function EditorPageContent() {
                 </div>
               )}
 
-              <div className="h-full min-h-0 grid grid-cols-1 xl:grid-cols-[minmax(0,1.65fr)_minmax(360px,1fr)] gap-3">
+              <div className="flex-1 min-h-0 h-full grid grid-cols-1 xl:grid-cols-[minmax(0,1.65fr)_minmax(360px,1fr)] gap-3 auto-rows-fr">
                 <Editor
                   value={code}
                   onChange={setCode}

@@ -114,7 +114,7 @@ export function ExplanationPanel({
   if (!explanation) {
     return (
       <div className="h-full rounded-xl border border-cyan-500/10 bg-[#040f28] overflow-hidden flex flex-col">
-        <div className="p-5 md:p-6 space-y-5 flex-1">
+        <div className="p-5 md:p-6 space-y-5 flex-1 overflow-auto">
           <div className="flex items-center justify-between pb-4 border-b border-cyan-500/10">
             <h2 className="text-2xl font-bold text-slate-100 inline-flex items-center gap-2">
               <Bot size={20} className="text-cyan-300" />

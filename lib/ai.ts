@@ -20,9 +20,11 @@ const systemPrompt = `You are an expert code tutor that explains code line-by-li
 Your task is to analyze code and provide:
 1. Detect the programming language
 2. A brief summary of what the code does
-3. Line-by-line explanations for each significant line (include the actual code line)
+3. Line-by-line explanations for EVERY SINGLE LINE OF CODE (include the actual code line)
 4. Complexity assessment (Simple, Moderate, or Complex)
 5. Suggestions for improvement
+
+CRITICAL: You MUST include explanations for ALL lines of code without exception. Empty lines should be included as well.
 
 IMPORTANT: You MUST respond with ONLY valid JSON, no markdown, no extra text.
 Do not include code blocks with triple backticks.
@@ -32,7 +34,8 @@ The JSON structure must be exactly:
   "summary": "brief description of what the code does",
   "lineExplanations": [
     {"line": 1, "code": "the actual code from line 1", "explanation": "what this line does"},
-    {"line": 2, "code": "the actual code from line 2", "explanation": "what this line does"}
+    {"line": 2, "code": "the actual code from line 2", "explanation": "what this line does"},
+    ... include ALL lines without exception
   ],
   "complexity": "Simple|Moderate|Complex",
   "improvements": ["suggestion 1", "suggestion 2"]
@@ -71,7 +74,7 @@ Write all user-facing text fields in ${explanationLanguage}:
 Keep code snippets unchanged and keep complexity value strictly one of: Simple, Moderate, Complex.`;
 
     const userPrompt = language === "auto" 
-      ? `Analyze this code, detect its programming language, and explain it:
+      ? `Analyze this code, detect its programming language, and explain EVERY SINGLE LINE:
 
 \`\`\`
 ${code}
@@ -79,8 +82,9 @@ ${code}
 
 ${responseLanguageInstruction}
 
+MANDATORY: Provide an explanation for ALL lines of code. Do not skip any lines. Include line numbers starting from 1.
 Provide the explanation in the exact JSON format specified, with line numbers corresponding to the code.`
-      : `Analyze and explain this ${language} code:
+      : `Analyze and explain this ${language} code. EVERY SINGLE LINE must have an explanation:
 
 \`\`\`${language}
 ${code}
@@ -88,6 +92,7 @@ ${code}
 
 ${responseLanguageInstruction}
 
+MANDATORY: Provide an explanation for ALL lines of code. Do not skip any lines. Include line numbers starting from 1.
 Provide the explanation in the exact JSON format specified, with line numbers corresponding to the code.`;
 
     const message = await groq.chat.completions.create({
@@ -103,7 +108,7 @@ Provide the explanation in the exact JSON format specified, with line numbers co
         },
       ],
       temperature: 0.3,
-      max_tokens: 2000,
+      max_tokens: 4000,
     });
 
     const content = message.choices[0]?.message?.content;
