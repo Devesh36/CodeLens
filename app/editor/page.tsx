@@ -132,6 +132,24 @@ function EditorPageContent() {
         const currentUserId = data?.user?.id ?? null;
         setUserId(currentUserId);
         setIsAuthenticated(!!currentUserId);
+
+        // If user just logged in and there's pending snippet data, restore it
+        if (currentUserId) {
+          const pendingSnippet = localStorage.getItem("pendingSnippetSave");
+          if (pendingSnippet) {
+            try {
+              const pendingData = JSON.parse(pendingSnippet);
+              setCode(pendingData.code);
+              setLanguage(pendingData.language);
+              setSnippetTitle(pendingData.title);
+              setExplanation(pendingData.explanation);
+              setShowSaveModal(true);
+              localStorage.removeItem("pendingSnippetSave");
+            } catch (e) {
+              console.error("Failed to restore pending snippet:", e);
+            }
+          }
+        }
       } catch {
         setUserId(null);
         setIsAuthenticated(false);
@@ -180,6 +198,15 @@ function EditorPageContent() {
 
   async function handleSaveSnippet() {
     if (!isAuthenticated) {
+      // Store pending snippet data before redirecting
+      const pendingData = {
+        code,
+        language,
+        title: snippetTitle,
+        explanation,
+      };
+      localStorage.setItem("pendingSnippetSave", JSON.stringify(pendingData));
+
       if (confirm("You need to sign up to save snippets. Would you like to sign up now?")) {
         router.push("/signup");
       }
@@ -195,6 +222,14 @@ function EditorPageContent() {
 
     try {
       if (!userId) {
+        // Store pending snippet data and redirect to login
+        const pendingData = {
+          code,
+          language,
+          title: snippetTitle,
+          explanation,
+        };
+        localStorage.setItem("pendingSnippetSave", JSON.stringify(pendingData));
         router.push("/login");
         return;
       }
@@ -213,6 +248,7 @@ function EditorPageContent() {
       } else {
         setShowSaveModal(false);
         setSnippetTitle("");
+        localStorage.removeItem("pendingSnippetSave");
         router.push("/dashboard");
       }
     } catch {

@@ -36,7 +36,13 @@ export default function SignupPage() {
       if (result.error) {
         setError(result.error);
       } else if (result.token) {
-        router.push("/dashboard");
+        // Check if there's a pending snippet to save
+        const pendingSnippet = localStorage.getItem("pendingSnippetSave");
+        if (pendingSnippet) {
+          router.push("/editor");
+        } else {
+          router.push("/dashboard");
+        }
         router.refresh();
       }
     } catch {
