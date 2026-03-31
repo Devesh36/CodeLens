@@ -164,11 +164,7 @@ export default function DashboardPage() {
             <Link href="/" className="text-sm font-bold text-cyan-400 hover:text-cyan-300">
               CodeLens AI
             </Link>
-            <div className="hidden md:flex items-center gap-6 text-xs font-semibold uppercase tracking-widest text-slate-400">
-              <button type="button" className="hover:text-cyan-400 transition-colors">Explorer</button>
-              <button type="button" className="hover:text-cyan-400 transition-colors">Architecture</button>
-              <button type="button" className="hover:text-cyan-400 transition-colors">Collaborate</button>
-            </div>
+          
           </div>
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             <button type="button" title="Notifications" className="text-slate-400 hover:text-slate-200 transition-colors">
@@ -201,11 +197,6 @@ export default function DashboardPage() {
         {/* Left Sidebar */}
         <aside className={`${isSidebarOpen ? "block" : "hidden"} w-full md:w-56 border-b md:border-b-0 md:border-r border-cyan-500/10 bg-slate-900/40 backdrop-blur-xl md:overflow-y-auto p-3 md:p-4`}>
           <div className="mb-4 md:mb-8">
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-500/20 border border-indigo-500/30 text-indigo-100 mb-2">
-              <div className="w-2 h-2 rounded-full bg-indigo-400" />
-              <span className="text-xs font-semibold uppercase tracking-[0.08em]">Kinetic Workspace</span>
-            </div>
-            <p className="text-xs text-slate-500 uppercase tracking-[0.08em] font-semibold px-3">v2.4.0-stable</p>
           </div>
 
           <Link href={`/editor?insightLanguage=${encodeURIComponent(explanationLanguage)}`} className="w-full">
