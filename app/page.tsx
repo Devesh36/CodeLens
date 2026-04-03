@@ -370,17 +370,54 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/55 px-6 py-6 sm:px-8 sm:py-7 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
-            <div>
-              <p className="text-base sm:text-lg font-semibold text-white">Free to start. Upgrade only when you need more.</p>
-              <p className="text-sm text-slate-400 mt-1">Free includes up to 5 snippets. Pro unlocks unlimited saves and advanced AI tools.</p>
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/55 p-6 sm:p-8">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3 className="text-xl sm:text-2xl font-semibold text-white">Pricing</h3>
+              <span className="inline-flex items-center gap-2 rounded-full border border-indigo-400/25 bg-indigo-500/10 px-3 py-1 text-xs font-semibold tracking-[0.12em] uppercase text-indigo-200">
+                Pro unlocks unlimited work
+              </span>
             </div>
-            <Link
-              href="/signup"
-              className="inline-flex items-center justify-center rounded-lg bg-cyan-500 hover:bg-cyan-400 px-5 py-2.5 text-sm font-semibold text-slate-950 transition-colors"
-            >
-              Create Free Account
-            </Link>
+
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <article className="rounded-2xl border border-slate-700/70 bg-slate-950/60 p-5 sm:p-6">
+                <p className="text-xs font-semibold tracking-[0.2em] uppercase text-slate-400">Free</p>
+                <p className="mt-3 text-3xl font-bold text-white">$0</p>
+                <p className="mt-2 text-sm text-slate-400">Great for trying out CodeLens.</p>
+                <ul className="mt-4 space-y-2 text-sm text-slate-300">
+                  <li>Up to 5 saved snippets</li>
+                  <li>AI explanations with summary + complexity</li>
+                  <li>Shareable public links</li>
+                  <li>Tags, favorites, and search</li>
+                </ul>
+                <Link
+                  href="/signup"
+                  className="mt-5 inline-flex items-center justify-center rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-800 transition-colors"
+                >
+                  Start Free
+                </Link>
+              </article>
+
+              <article className="rounded-2xl border border-cyan-400/25 bg-[linear-gradient(140deg,rgba(14,116,144,0.18),rgba(15,23,42,0.9))] p-5 sm:p-6 relative overflow-hidden">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,rgba(34,211,238,0.22),transparent_40%)]" />
+                <div className="relative">
+                  <p className="text-xs font-semibold tracking-[0.2em] uppercase text-cyan-200">Pro</p>
+                  <p className="mt-3 text-3xl font-bold text-white">$2.40<span className="text-sm text-cyan-200">/mo</span></p>
+                  <p className="mt-2 text-sm text-cyan-100">Unlimited saves, priority speed, and power tools.</p>
+                  <ul className="mt-4 space-y-2 text-sm text-cyan-100">
+                    <li>Unlimited snippets + longer code</li>
+                    <li>Faster AI responses + higher limits</li>
+                    <li>Advanced AI: refactor, tests, security review</li>
+                    <li>Private sharing controls</li>
+                  </ul>
+                  <Link
+                    href="/signup"
+                    className="mt-5 inline-flex items-center justify-center rounded-lg bg-cyan-400 hover:bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 transition-colors"
+                  >
+                    Go Pro
+                  </Link>
+                </div>
+              </article>
+            </div>
           </div>
         </section>
       </div>
