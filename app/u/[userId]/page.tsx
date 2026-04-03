@@ -30,11 +30,17 @@ export default function UserProfilePage() {
 
   async function handleFork(id: string) {
     const res = await forkSnippet(id);
-    if (res.success) {
+    if ("success" in res && res.success) {
       alert("Snippet forked to your dashboard!");
-    } else {
-      alert(res.error || "Failed to fork snippet");
+      return;
     }
+
+    if ("error" in res && res.error) {
+      alert(res.error);
+      return;
+    }
+
+    alert("Failed to fork snippet");
   }
 
   if (isLoading) {

@@ -8,6 +8,30 @@ import { randomUUID } from "crypto";
 
 const AUTH_COOKIE_NAME = "auth";
 const AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
+const FREE_SNIPPET_LIMIT = 5;
+
+async function enforceSnippetLimit(userId: string, incomingCount = 1) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { plan: true },
+  });
+
+  if (!user || user.plan === "PRO") {
+    return null;
+  }
+
+  const existingCount = await prisma.snippet.count({
+    where: { userId },
+  });
+
+  if (existingCount + incomingCount > FREE_SNIPPET_LIMIT) {
+    return {
+      error: `Free plan allows up to ${FREE_SNIPPET_LIMIT} snippets. Upgrade to Pro to save more.`,
+    };
+  }
+
+  return null;
+}
 
 async function setAuthCookie(token: string) {
   const cookieStore = await cookies();
@@ -83,10 +107,20 @@ export async function getCurrentUser() {
       return { user: null };
     }
 
+    const user = await prisma.user.findUnique({
+      where: { id: String(payload.userId) },
+      select: { id: true, email: true, plan: true },
+    });
+
+    if (!user) {
+      return { user: null };
+    }
+
     return {
       user: {
-        id: String(payload.userId),
-        email: String(payload.email),
+        id: user.id,
+        email: user.email,
+        plan: user.plan,
       },
     };
   } catch {
@@ -112,6 +146,11 @@ export async function createSnippet(
     const authUserId = await requireAuthUserId();
     if (!authUserId) {
       return { error: "Unauthorized" };
+    }
+
+    const limitResult = await enforceSnippetLimit(authUserId, 1);
+    if (limitResult) {
+      return limitResult;
     }
 
     const snippet = await prisma.snippet.create({
@@ -406,6 +445,11 @@ export async function importSnippets(snippetsToImport: any[]) {
       return { success: true, imported: 0 };
     }
 
+    const limitResult = await enforceSnippetLimit(authUserId, snippetsToImport.length);
+    if (limitResult) {
+      return limitResult;
+    }
+
     await prisma.snippet.createMany({
       data: snippetsToImport.map((s) => ({
         title: s.title || "Untitled Snippet",
@@ -449,6 +493,11 @@ export async function forkSnippet(snippetId: string) {
     const authUserId = await requireAuthUserId();
     if (!authUserId) {
       return { error: "Unauthorized" };
+    }
+
+    const limitResult = await enforceSnippetLimit(authUserId, 1);
+    if (limitResult) {
+      return limitResult;
     }
 
     const snippet = await prisma.snippet.findUnique({

@@ -372,8 +372,8 @@ export default function HomePage() {
 
           <div className="rounded-2xl border border-slate-800 bg-slate-900/55 px-6 py-6 sm:px-8 sm:py-7 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
             <div>
-              <p className="text-base sm:text-lg font-semibold text-white">Free to start. Upgrade only when your team scales.</p>
-              <p className="text-sm text-slate-400 mt-1">No credit card required for your first projects and public shares.</p>
+              <p className="text-base sm:text-lg font-semibold text-white">Free to start. Upgrade only when you need more.</p>
+              <p className="text-sm text-slate-400 mt-1">Free includes up to 5 snippets. Pro unlocks unlimited saves and advanced AI tools.</p>
             </div>
             <Link
               href="/signup"

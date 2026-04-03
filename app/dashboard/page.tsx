@@ -38,6 +38,9 @@ export default function DashboardPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [userPlan, setUserPlan] = useState<"FREE" | "PRO">("FREE");
+  const [isUpgrading, setIsUpgrading] = useState(false);
+  const [isDowngrading, setIsDowngrading] = useState(false);
   
   const explanationLanguage = typeof window !== "undefined" 
     ? localStorage.getItem("preferredExplanationLanguage") || "English"
@@ -104,9 +107,9 @@ export default function DashboardPage() {
       }
 
       const result = await importSnippets(importedSnippets);
-      if (result.error) {
+      if ("error" in result && result.error) {
         alert("Failed to import: " + result.error);
-      } else {
+      } else if ("imported" in result) {
         alert(`Import successful!\n\nImported: ${result.imported} snippets.`);
         loadData();
       }
@@ -139,6 +142,7 @@ export default function DashboardPage() {
       }
 
       setUserId(authResult.user.id);
+      setUserPlan(authResult.user.plan || "FREE");
 
       const result = await getUserSnippets();
       if (result.snippets) {
@@ -154,6 +158,21 @@ export default function DashboardPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    const scriptId = "razorpay-checkout";
+    if (document.getElementById(scriptId)) return;
+
+    const script = document.createElement("script");
+    script.id = scriptId;
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+      script.remove();
+    };
+  }, []);
 
   async function handleDelete(snippetId: string) {
     const result = await deleteSnippet(snippetId);
@@ -182,6 +201,72 @@ export default function DashboardPage() {
       }
     }
     loadData();
+  }
+
+  async function handleUpgradeToPro() {
+    setIsUpgrading(true);
+    try {
+      const response = await fetch("/api/billing/checkout", { method: "POST" });
+      const data = await response.json();
+      if (!response.ok || !data.subscriptionId || !data.keyId) {
+        alert(data.error || "Failed to start checkout");
+        return;
+      }
+
+      const RazorpayConstructor = (window as any).Razorpay;
+      if (!RazorpayConstructor) {
+        alert("Razorpay checkout failed to load. Please try again.");
+        return;
+      }
+
+      const options = {
+        key: data.keyId,
+        subscription_id: data.subscriptionId,
+        name: "CodeLens AI",
+        description: "Pro Plan",
+        handler: () => {
+          alert("Payment captured. Your plan will update shortly.");
+        },
+        modal: {
+          ondismiss: () => {
+            setIsUpgrading(false);
+          },
+        },
+        notes: {
+          userId,
+        },
+      };
+
+      const checkout = new RazorpayConstructor(options);
+      checkout.open();
+    } catch {
+      alert("Failed to start checkout");
+    } finally {
+      setIsUpgrading(false);
+    }
+  }
+
+  async function handleDowngrade() {
+    const confirmed = window.confirm(
+      "This will cancel your Pro subscription and downgrade your account to Free. Continue?"
+    );
+    if (!confirmed) return;
+
+    setIsDowngrading(true);
+    try {
+      const response = await fetch("/api/billing/cancel", { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) {
+        alert(data.error || "Failed to cancel subscription");
+        return;
+      }
+      setUserPlan("FREE");
+      alert("Subscription cancelled. Your account is now Free.");
+    } catch {
+      alert("Failed to cancel subscription");
+    } finally {
+      setIsDowngrading(false);
+    }
   }
 
   const filteredSnippets = useMemo(
@@ -421,6 +506,34 @@ export default function DashboardPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-900/50 border border-slate-700 text-slate-100 placeholder-slate-500 rounded-lg focus:outline-none focus:ring-1 focus:ring-cyan-400 focus:border-cyan-400 transition-all text-sm"
               />
+            </div>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <span className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-[0.12em] border ${
+                userPlan === "PRO"
+                  ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-200"
+                  : "border-slate-700 bg-slate-900/60 text-slate-300"
+              }`}>
+                {userPlan === "PRO" ? "Pro" : "Free"}
+              </span>
+              {userPlan === "PRO" ? (
+                <button
+                  type="button"
+                  onClick={handleDowngrade}
+                  disabled={isDowngrading}
+                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-60 disabled:cursor-not-allowed text-slate-100 text-xs font-semibold rounded-lg transition-colors"
+                >
+                  {isDowngrading ? "Cancelling..." : "Downgrade"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleUpgradeToPro}
+                  disabled={isUpgrading}
+                  className="px-3 py-2 bg-indigo-500 hover:bg-indigo-400 disabled:opacity-60 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg transition-colors"
+                >
+                  {isUpgrading ? "Upgrading..." : "Upgrade to Pro"}
+                </button>
+              )}
             </div>
             <div className="relative w-full sm:w-auto">
               <button
