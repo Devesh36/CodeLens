@@ -1,37 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CodeLens AI
 
-## Getting Started
+CodeLens AI is a Next.js application for analyzing and managing code snippets. It lets users explain code line-by-line, refactor snippets with instructions, and chat about snippets using an AI model. It includes authentication, snippet storage, tagging, and a simple free vs. pro plan limit.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Explain code with a summary, per-line breakdown, complexity, and improvement suggestions
+- Refactor code based on a natural-language instruction
+- Chat with a snippet for quick questions and answers
+- Save snippets with tags and search them later
+- Authenticate users and enforce a free-plan snippet limit
+- Support basic billing flows for upgrades and customer portal access
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Community impact
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+CodeLens AI helps the community by making code easier to understand, review, and share. It supports learning with clear explanations, encourages better refactoring practices, and gives teams a simple way to store and discuss snippets. This reduces onboarding time and improves collaboration across projects.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Tech stack
 
-## Learn More
+- Next.js App Router
+- React 19
+- Prisma with Postgres
+- Tailwind CSS
+- Groq SDK for LLM requests
 
-To learn more about Next.js, take a look at the following resources:
+## Getting started
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Install dependencies
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+   pnpm install
 
-## Deploy on Vercel
+2. Create a local environment file
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+   cp .env.example .env
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-# CodeLens
+3. Run database migrations
+
+   pnpm db:migrate
+
+4. Start the dev server
+
+   pnpm dev
+
+The app should be available at http://localhost:3000.
+
+## Environment variables
+
+These are the commonly required variables. See .env for the full list used by the app.
+
+- GROQ_API_KEY
+- DATABASE_URL
+- JWT_SECRET
+- RAZORPAY_KEY_ID
+- RAZORPAY_KEY_SECRET
+
+## Scripts
+
+- pnpm dev: start development server
+- pnpm build: build for production
+- pnpm start: run production server
+- pnpm lint: run ESLint
+- pnpm db:migrate: create and apply Prisma migrations
+- pnpm db:push: push schema changes to the database
+- pnpm db:studio: open Prisma Studio
+- pnpm db:seed: seed the database
+
+## Contributing
+
+Contributions are welcome.
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes with clear, focused commits
+4. Open a pull request describing the change and motivation
+
+If you plan to add a new feature, open an issue first so we can align on scope.
