@@ -243,9 +243,9 @@ function EditorPageContent() {
         explanation ?? null
       );
 
-      if (result.error) {
+      if ("error" in result && result.error) {
         setError(result.error);
-      } else {
+      } else if ("snippet" in result) {
         setShowSaveModal(false);
         setSnippetTitle("");
         localStorage.removeItem("pendingSnippetSave");
