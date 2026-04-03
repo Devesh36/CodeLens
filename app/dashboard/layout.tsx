@@ -1,7 +1,14 @@
+import { CommandPalette } from "@/components/CommandPalette";
+
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return (
+    <>
+      <CommandPalette />
+      {children}
+    </>
+  );
 }

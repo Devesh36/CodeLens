@@ -20,7 +20,7 @@ async function setAuthCookie(token: string) {
   });
 }
 
-async function requireAuthUserId(): Promise<string | null> {
+export async function requireAuthUserId(): Promise<string | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
   if (!token) return null;
@@ -126,6 +126,28 @@ export async function createSnippet(
         userId: authUserId,
       },
     });
+
+    // Auto-tagging: extract suggestedTags from explanationJson if present
+    if (explanationJson && typeof explanationJson === "object" && "suggestedTags" in explanationJson) {
+      const tags = (explanationJson as any).suggestedTags;
+      if (Array.isArray(tags)) {
+        for (const t of tags) {
+          if (typeof t === "string") {
+            const cleanTag = t.toLowerCase().trim().replace(/\s+/g, '-');
+            if (cleanTag) {
+              let tag = await prisma.tag.findUnique({ where: { name: cleanTag } });
+              if (!tag) {
+                tag = await prisma.tag.create({ data: { name: cleanTag } });
+              }
+              await prisma.snippetTag.create({
+                data: { snippetId: snippet.id, tagId: tag.id },
+              });
+            }
+          }
+        }
+      }
+    }
+
     revalidatePath("/dashboard");
     return { snippet };
   } catch {
@@ -149,11 +171,20 @@ export async function updateSnippet(
 
     const existing = await prisma.snippet.findFirst({
       where: { id: snippetId, userId: authUserId },
-      select: { id: true },
     });
     if (!existing) {
       return { error: "Snippet not found" };
     }
+
+    // Save previous version
+    await prisma.snippetVersion.create({
+      data: {
+        snippetId: existing.id,
+        code: existing.code,
+        explanation: existing.explanation,
+        explanationJson: existing.explanationJson ?? undefined,
+      }
+    });
 
     const snippet = await prisma.snippet.update({
       where: { id: snippetId },
@@ -391,5 +422,116 @@ export async function importSnippets(snippetsToImport: any[]) {
   } catch (error) {
     console.error("Failed to import snippets:", error);
     return { error: "Failed to import snippets" };
+  }
+}
+
+export async function getDiscoverSnippets() {
+  try {
+    const snippets = await prisma.snippet.findMany({
+      where: { isPublic: true },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        tags: { include: { tag: true } },
+        _count: { select: { favorites: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+    return { snippets };
+  } catch (error) {
+    console.error("Failed to fetch discover snippets:", error);
+    return { error: "Failed to fetch discover snippets" };
+  }
+}
+
+export async function forkSnippet(snippetId: string) {
+  try {
+    const authUserId = await requireAuthUserId();
+    if (!authUserId) {
+      return { error: "Unauthorized" };
+    }
+
+    const snippet = await prisma.snippet.findUnique({
+      where: { id: snippetId },
+      include: { tags: { include: { tag: true } } }
+    });
+
+    if (!snippet || (!snippet.isPublic && snippet.userId !== authUserId)) {
+      return { error: "Snippet not found or private" };
+    }
+
+    const forkedSnippet = await prisma.snippet.create({
+      data: {
+        title: `${snippet.title} (Forked)`,
+        code: snippet.code,
+        language: snippet.language,
+        explanation: snippet.explanation,
+        explanationJson: snippet.explanationJson ?? undefined,
+        userId: authUserId,
+      }
+    });
+
+    // Handle tags if necessary
+    for (const st of snippet.tags) {
+      await prisma.snippetTag.create({
+        data: {
+          snippetId: forkedSnippet.id,
+          tagId: st.tag.id
+        }
+      });
+    }
+
+    revalidatePath("/dashboard");
+    return { success: true, forkedSnippet };
+  } catch (error) {
+    console.error("Failed to fork snippet:", error);
+    return { error: "Failed to fork snippet" };
+  }
+}
+
+export async function getUserProfile(userId: string) {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, name: true, email: true, createdAt: true }
+    });
+    
+    if (!user) {
+      return { error: "User not found" };
+    }
+
+    const snippets = await prisma.snippet.findMany({
+      where: { userId, isPublic: true },
+      include: {
+        tags: { include: { tag: true } },
+        _count: { select: { favorites: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return { user, snippets };
+  } catch (error) {
+    console.error("Failed to fetch profile:", error);
+    return { error: "Failed to fetch profile" };
+  }
+}
+
+export async function getSnippetVersions(snippetId: string) {
+  try {
+    const authUserId = await requireAuthUserId();
+    if (!authUserId) return { error: "Unauthorized" };
+
+    const owns = await prisma.snippet.findFirst({
+      where: { id: snippetId, userId: authUserId }
+    });
+    if (!owns) return { error: "Not found" };
+
+    const versions = await prisma.snippetVersion.findMany({
+      where: { snippetId },
+      orderBy: { createdAt: 'desc' }
+    });
+    return { versions };
+  } catch {
+    return { error: "Failed to load versions" };
   }
 }

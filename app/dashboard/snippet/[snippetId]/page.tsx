@@ -12,10 +12,11 @@ import {
   getCurrentUser,
 } from "@/app/actions";
 import { ExplanationPanel } from "@/components/ExplanationPanel";
+import { ChatPanel } from "@/components/ChatPanel";
 import { ExplanationResponse } from "@/lib/ai";
 import { getLanguageName, formatDate } from "@/lib/utils";
 import Link from "next/link";
-import { Copy, Heart, Trash2, Edit2, Share2, Tag, X } from "lucide-react";
+import { Copy, Heart, Trash2, Edit2, Share2, Tag, X, Globe, Lock } from "lucide-react";
 
 interface Snippet {
   id: string;
@@ -97,17 +98,10 @@ export default function SnippetDetailPage() {
     }
   }
 
-  async function handleShare() {
+  async function handleToggleVisibility() {
     if (snippet) {
       const result = await toggleSnippetVisibility(snippet.id, !snippet.isPublic);
       if (result.snippet) {
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
-        const shareLink = result.snippet.shareToken
-          ? `${baseUrl}/shared/${result.snippet.shareToken}`
-          : "";
-        if (shareLink) {
-          await copyShareLink(shareLink);
-        }
         loadData();
       }
     }
@@ -192,11 +186,25 @@ export default function SnippetDetailPage() {
               <Heart size={20} fill={isFavorite ? "currentColor" : "none"} />
             </button>
             <button
-              onClick={handleShare}
-              className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-all"
-              title={snippet.isPublic ? "Make Private" : "Make Public"}
+              onClick={handleToggleVisibility}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all border-2 ${
+                snippet.isPublic
+                  ? "bg-emerald-100 text-emerald-700 border-emerald-300 hover:bg-emerald-200"
+                  : "bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200"
+              }`}
+              title={snippet.isPublic ? "Click to make Private" : "Click to make Public"}
             >
-              <Share2 size={20} />
+              {snippet.isPublic ? (
+                <>
+                  <Globe size={16} />
+                  Public
+                </>
+              ) : (
+                <>
+                  <Lock size={16} />
+                  Private
+                </>
+              )}
             </button>
             <button
               onClick={() => router.push(`/dashboard/snippet/${snippet.id}/edit`)}
@@ -215,22 +223,20 @@ export default function SnippetDetailPage() {
           </div>
         </div>
 
-        {/* Visibility Badge */}
-        {snippet.isPublic && (
-          <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-emerald-100 border-2 border-emerald-300 text-emerald-700 rounded-lg text-sm font-semibold">
-            <Share2 size={16} />
-            Public
-            {snippet.shareToken && (
-              <button
-                onClick={() => {
-                  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
-                  copyShareLink(`${baseUrl}/shared/${snippet.shareToken}`);
-                }}
-                className="ml-2 text-emerald-600 hover:text-emerald-800 font-bold"
-              >
-                Copy Link
-              </button>
-            )}
+        {/* Share Link Banner */}
+        {snippet.isPublic && snippet.shareToken && (
+          <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 border-2 border-emerald-200 text-emerald-800 rounded-lg text-sm font-medium">
+            <Share2 size={16} className="text-emerald-600" />
+            Anyone with the link can view this snippet.
+            <button
+              onClick={() => {
+                const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+                copyShareLink(`${baseUrl}/shared/${snippet.shareToken}`);
+              }}
+              className="ml-2 px-3 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-md font-bold transition-colors"
+            >
+              Copy Link
+            </button>
           </div>
         )}
       </div>
@@ -255,13 +261,17 @@ export default function SnippetDetailPage() {
         </div>
 
         {/* Explanation Panel */}
-        {snippet.explanationJson ? (
-          <ExplanationPanel explanation={snippet.explanationJson as ExplanationResponse} />
-        ) : (
-          <div className="flex items-center justify-center bg-white rounded-lg border-2 border-gray-200 p-6 shadow-lg">
-            <p className="text-gray-600 font-semibold">No explanation available</p>
-          </div>
-        )}
+        <div className="flex flex-col gap-6">
+          {snippet.explanationJson ? (
+            <ExplanationPanel explanation={snippet.explanationJson as ExplanationResponse} />
+          ) : (
+            <div className="flex items-center justify-center bg-white rounded-lg border-2 border-gray-200 p-6 shadow-lg">
+              <p className="text-gray-600 font-semibold">No explanation available</p>
+            </div>
+          )}
+
+          <ChatPanel snippetId={snippet.id} code={snippet.code} />
+        </div>
       </div>
 
       {/* Tags Section */}

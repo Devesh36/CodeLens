@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getSnippet, updateSnippet } from "@/app/actions";
+import { getSnippet, updateSnippet, getSnippetVersions } from "@/app/actions";
 import { ExplanationPanel } from "@/components/ExplanationPanel";
 import { ExplanationResponse } from "@/lib/ai";
 import { getLanguageName } from "@/lib/utils";
 import Link from "next/link";
 import { PROGRAMMING_LANGUAGES } from "@/lib/utils";
+import { Sparkles, Loader2 } from "lucide-react";
 
 
 interface Snippet {
@@ -32,6 +33,11 @@ export default function EditSnippetPage() {
     language: "javascript",
   });
 
+  const [versions, setVersions] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<"edit" | "history">("edit");
+  const [isRefactoring, setIsRefactoring] = useState(false);
+  const [refactorInstruction, setRefactorInstruction] = useState("");
+
   useEffect(() => {
     loadSnippet();
   }, [params]);
@@ -49,10 +55,41 @@ export default function EditSnippetPage() {
           language: snip.language,
         });
       }
+      const vResult = await getSnippetVersions(snippetId);
+      if (vResult.versions) {
+        setVersions(vResult.versions);
+      }
     } catch (error) {
       setError("Failed to load snippet");
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function handleRefactor() {
+    if (!formData.code || !refactorInstruction) return;
+    setIsRefactoring(true);
+    try {
+      const res = await fetch("/api/refactor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: formData.code,
+          language: formData.language,
+          instruction: refactorInstruction
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to refactor");
+      const data = await res.json();
+      if (data.code) {
+        setFormData((prev) => ({ ...prev, code: data.code }));
+        alert(`Refactored successfully: ${data.explanation}`);
+      }
+    } catch (err) {
+      alert("Refactoring failed");
+    } finally {
+      setIsRefactoring(false);
+      setRefactorInstruction("");
     }
   }
 
@@ -119,7 +156,20 @@ export default function EditSnippetPage() {
       </Link>
 
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-white mb-8">Edit Snippet</h1>
+        <div className="flex gap-4 mb-8 border-b border-gray-800 pb-2">
+          <button 
+            onClick={() => setActiveTab("edit")} 
+            className={`text-xl font-bold ${activeTab === 'edit' ? 'text-white' : 'text-gray-500'}`}
+          >
+            Edit Snippet
+          </button>
+          <button 
+            onClick={() => setActiveTab("history")} 
+            className={`text-xl font-bold ${activeTab === 'history' ? 'text-white' : 'text-gray-500'}`}
+          >
+            History
+          </button>
+        </div>
 
         {error && (
           <div className="mb-6 p-4 bg-red-900/20 border border-red-800 text-red-400 rounded-lg">
@@ -127,7 +177,9 @@ export default function EditSnippetPage() {
           </div>
         )}
 
-        <form onSubmit={handleSave} className="space-y-6">
+        {activeTab === "edit" ? (
+          <>
+            <form onSubmit={handleSave} className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
               Title
@@ -178,9 +230,29 @@ export default function EditSnippetPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Code
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-300">
+                Code
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="e.g. Convert to arrow functions"
+                  value={refactorInstruction}
+                  onChange={(e) => setRefactorInstruction(e.target.value)}
+                  className="px-3 py-1 bg-gray-800 border border-gray-700 rounded text-sm text-white focus:outline-none focus:border-indigo-500 w-64"
+                />
+                <button
+                  type="button"
+                  onClick={handleRefactor}
+                  disabled={isRefactoring || !refactorInstruction}
+                  className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded text-sm flex items-center gap-1 transition-colors"
+                >
+                  {isRefactoring ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                  AI Refactor
+                </button>
+              </div>
+            </div>
             <textarea
               value={formData.code}
               onChange={(e) =>
@@ -190,20 +262,49 @@ export default function EditSnippetPage() {
               placeholder="Paste your code here..."
               className="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:outline-none focus:border-blue-500 font-mono text-sm h-96 resize-none"
               required
-            />
+              />
+            </div>
+          </form>
+          {/* Preview */}
+          {snippet.explanationJson && (
+            <div className="max-w-4xl mx-auto mt-8">
+              <h2 className="text-2xl font-bold text-white mb-4">
+                Current Explanation
+              </h2>
+              <ExplanationPanel explanation={snippet.explanationJson as ExplanationResponse} />
+            </div>
+          )}
+          </>
+        ) : (
+          <div className="space-y-6">
+            {versions.length === 0 ? (
+              <p className="text-gray-400">No previous versions found.</p>
+            ) : (
+              versions.map((v) => (
+                <div key={v.id} className="bg-gray-800 border border-gray-700 p-4 rounded-lg">
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-sm text-gray-400">{new Date(v.createdAt).toLocaleString()}</span>
+                    <button 
+                      onClick={() => {
+                        if(confirm("Restore this version?")) {
+                          setFormData({ ...formData, code: v.code });
+                          setActiveTab("edit");
+                        }
+                      }}
+                      className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-sm text-white rounded transition-colors"
+                    >
+                      Restore
+                    </button>
+                  </div>
+                  <pre className="text-xs bg-gray-900 p-3 rounded text-gray-300 overflow-auto max-h-40">
+                    {v.code}
+                  </pre>
+                </div>
+              ))
+            )}
           </div>
-        </form>
+        )}
       </div>
-
-      {/* Preview */}
-      {snippet.explanationJson && (
-        <div className="max-w-4xl mx-auto mt-8">
-          <h2 className="text-2xl font-bold text-white mb-4">
-            Current Explanation
-          </h2>
-          <ExplanationPanel explanation={snippet.explanationJson as ExplanationResponse} />
-        </div>
-      )}
     </div>
   );
 }

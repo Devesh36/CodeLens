@@ -2,7 +2,7 @@
 
 import { formatDate, truncateText, getLanguageName } from "@/lib/utils";
 import Link from "next/link";
-import { Heart, Share2, Edit2, Trash2 } from "lucide-react";
+import { Heart, Edit2, Trash2, Globe, Lock, Share2 } from "lucide-react";
 
 interface SnippetCardProps {
   id: string;
@@ -11,9 +11,11 @@ interface SnippetCardProps {
   language: string;
   createdAt: Date;
   isFavorite?: boolean;
+  isPublic?: boolean;
   onFavorite?: (snippetId: string) => void;
   onEdit?: (snippetId: string) => void;
   onDelete?: (snippetId: string) => void;
+  onToggleVisibility?: (snippetId: string) => void;
   onShare?: (snippetId: string) => void;
   shareToken?: string | null;
 }
@@ -25,9 +27,11 @@ export function SnippetCard({
   language,
   createdAt,
   isFavorite = false,
+  isPublic = false,
   onFavorite,
   onEdit,
   onDelete,
+  onToggleVisibility,
   onShare,
   shareToken,
 }: SnippetCardProps) {
@@ -84,12 +88,26 @@ export function SnippetCard({
             <Heart size={16} fill={isFavorite ? "currentColor" : "none"} />
           </button>
         )}
+        {onToggleVisibility && (
+          <button
+            type="button"
+            onClick={() => onToggleVisibility(id)}
+            className={`p-2 rounded-lg border transition-all duration-200 ${
+              isPublic
+                ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20 hover:text-emerald-300"
+                : "text-slate-400 hover:text-cyan-400 bg-slate-800/40 border-transparent hover:bg-cyan-500/20 hover:border-cyan-500/30"
+            }`}
+            title={isPublic ? "Public snippet - Click to make private" : "Private snippet - Click to make public"}
+          >
+            {isPublic ? <Globe size={16} /> : <Lock size={16} />}
+          </button>
+        )}
         {onShare && (
           <button
             type="button"
             onClick={() => onShare(id)}
             className="p-2 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/20 border border-transparent hover:border-cyan-500/30 transition-all duration-200"
-            title="Share snippet"
+            title={isPublic ? "Copy share link" : "Make public to share"}
           >
             <Share2 size={16} />
           </button>

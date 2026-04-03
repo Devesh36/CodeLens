@@ -13,7 +13,7 @@ import {
   importSnippets,
 } from "@/app/actions";
 import Link from "next/link";
-import { Plus, Search, Settings, Bell, LogOut, PanelLeftClose, PanelLeftOpen, Download, Upload, ChevronDown } from "lucide-react";
+import { Plus, Search, Settings, Bell, LogOut, PanelLeftClose, PanelLeftOpen, Download, Upload, ChevronDown, Code } from "lucide-react";
 
 interface Snippet {
   id: string;
@@ -57,6 +57,32 @@ export default function DashboardPage() {
     const link = document.createElement("a");
     link.href = url;
     link.download = "codelens-snippets-backup.json";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setIsDropdownOpen(false);
+  };
+
+  const handleVSCodeExport = () => {
+    const vscodeFormat: Record<string, any> = {};
+    
+    snippets.forEach((s) => {
+      // Create a sensible prefix, lowercased, spaces to dashes
+      const prefix = s.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      vscodeFormat[s.title] = {
+        prefix,
+        body: s.code.split('\n'),
+        description: (s as any).explanation || s.title,
+      };
+    });
+
+    const dataStr = JSON.stringify(vscodeFormat, null, 2);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "codelens.code-snippets";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -141,7 +167,7 @@ export default function DashboardPage() {
     loadData();
   }
 
-  async function handleShare(snippetId: string) {
+  async function handleToggleVisibility(snippetId: string) {
     const snippet = snippets.find((s) => s.id === snippetId);
     if (!snippet) return;
 
@@ -151,7 +177,7 @@ export default function DashboardPage() {
       const shareLink = result.snippet.shareToken
         ? `${baseUrl}/shared/${result.snippet.shareToken}`
         : "";
-      if (shareLink) {
+      if (shareLink && !snippet.isPublic) {
         await copyShareLink(shareLink);
       }
     }
@@ -255,9 +281,16 @@ export default function DashboardPage() {
           </div>
 
           <Link href={`/editor?insightLanguage=${encodeURIComponent(explanationLanguage)}`} className="w-full">
-            <button type="button" className="w-full px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 mb-6">
+            <button type="button" className="w-full px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 mb-4">
               <Plus size={16} />
               New Snippet
+            </button>
+          </Link>
+
+          <Link href="/discover" className="w-full">
+            <button type="button" className="w-full px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-cyan-400 text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 mb-6">
+              <Search size={16} />
+              Discover Public
             </button>
           </Link>
 
@@ -418,6 +451,14 @@ export default function DashboardPage() {
                       <Download size={16} className="text-cyan-400" />
                       Export Snippets
                     </button>
+                    <button
+                      type="button"
+                      onClick={handleVSCodeExport}
+                      className="w-full px-3 py-2 text-left text-sm text-slate-300 hover:text-white hover:bg-slate-700 rounded-md transition-colors flex items-center gap-2"
+                    >
+                      <Code size={16} className="text-cyan-400" />
+                      Export for VS Code
+                    </button>
                   </div>
                 </div>
               )}
@@ -473,8 +514,18 @@ export default function DashboardPage() {
                   language={snippet.language}
                   createdAt={new Date(snippet.createdAt)}
                   isFavorite={snippet.favorites && snippet.favorites.length > 0}
+                  isPublic={snippet.isPublic}
                   onFavorite={handleFavorite}
-                  onShare={handleShare}
+                  onToggleVisibility={handleToggleVisibility}
+                  onShare={(id) => {
+                    const s = snippets.find(x => x.id === id);
+                    if (s?.isPublic && s?.shareToken) {
+                      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+                      copyShareLink(`${baseUrl}/shared/${s.shareToken}`);
+                    } else {
+                      alert("Please make the snippet public first to share it.");
+                    }
+                  }}
                   onEdit={(id) => router.push(`/dashboard/snippet/${id}/edit`)}
                   onDelete={handleDelete}
                   shareToken={snippet.shareToken}

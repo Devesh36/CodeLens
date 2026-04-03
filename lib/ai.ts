@@ -10,6 +10,12 @@ export interface ExplanationResponse {
   complexity: string;
   improvements: string[];
   detectedLanguage?: string;
+  suggestedTags?: string[];
+}
+
+export interface RefactorResponse {
+  code: string;
+  explanation: string;
 }
 
 const groq = new Groq({
@@ -23,6 +29,7 @@ Your task is to analyze code and provide:
 3. Line-by-line explanations for EVERY SINGLE LINE OF CODE (include the actual code line)
 4. Complexity assessment (Simple, Moderate, or Complex)
 5. Suggestions for improvement
+6. Provide a list of up to 5 suggested tags for this code (e.g. "authentication", "api-route", "react-hook").
 
 CRITICAL: You MUST include explanations for ALL lines of code without exception. Empty lines should be included as well.
 
@@ -34,12 +41,25 @@ The JSON structure must be exactly:
   "summary": "brief description of what the code does",
   "lineExplanations": [
     {"line": 1, "code": "the actual code from line 1", "explanation": "what this line does"},
-    {"line": 2, "code": "the actual code from line 2", "explanation": "what this line does"},
-    ... include ALL lines without exception
+    {"line": 2, "code": "the actual code from line 2", "explanation": "what this line does"}
   ],
   "complexity": "Simple|Moderate|Complex",
-  "improvements": ["suggestion 1", "suggestion 2"]
+  "improvements": ["suggestion 1", "suggestion 2"],
+  "suggestedTags": ["tag1", "tag2", "tag3"]
 }`;
+
+function cleanJsonString(str: string): string {
+  let cleaned = str.trim();
+  if (cleaned.startsWith("```json")) {
+    cleaned = cleaned.substring(7);
+  } else if (cleaned.startsWith("```")) {
+    cleaned = cleaned.substring(3);
+  }
+  if (cleaned.endsWith("```")) {
+    cleaned = cleaned.substring(0, cleaned.length - 3);
+  }
+  return cleaned.trim();
+}
 
 export async function explainCode(
   code: string,
@@ -49,91 +69,94 @@ export async function explainCode(
   try {
     const responseLanguageInstruction =
       explanationLanguage === "Lazy Hindi (Romanized)"
-        ? `
-Write all user-facing text fields in colloquial Hindi using only English letters (Roman script).
-Tone: natural and friendly, like everyday spoken Hinglish.
-Example style: "kya ho raha hai", "ye line array ko sort karti hai".
-- summary
-- lineExplanations[].explanation
-- improvements[]
-Keep code snippets unchanged and keep complexity value strictly one of: Simple, Moderate, Complex.`
+        ? `Write all user-facing text fields in colloquial Hindi using only English letters (Roman script).`
         : explanationLanguage === "Lazy Marathi (Romanized)"
-        ? `
-Write all user-facing text fields in colloquial Marathi using only English letters (Roman script).
-Tone: natural and friendly, like everyday spoken Marathi.
-Example style: "kai zhala re", "hi line list filter karte".
-- summary
-- lineExplanations[].explanation
-- improvements[]
-Keep code snippets unchanged and keep complexity value strictly one of: Simple, Moderate, Complex.`
-        : `
-Write all user-facing text fields in ${explanationLanguage}:
-- summary
-- lineExplanations[].explanation
-- improvements[]
-Keep code snippets unchanged and keep complexity value strictly one of: Simple, Moderate, Complex.`;
+        ? `Write all user-facing text fields in colloquial Marathi using only English letters (Roman script).`
+        : `Write all user-facing text fields in ${explanationLanguage}:`;
 
-    const userPrompt = language === "auto" 
-      ? `Analyze this code, detect its programming language, and explain EVERY SINGLE LINE:
-
+    const userPrompt = `Analyze this code, detect its programming language, and explain EVERY SINGLE LINE:
 \`\`\`
 ${code}
 \`\`\`
-
-${responseLanguageInstruction}
-
-MANDATORY: Provide an explanation for ALL lines of code. Do not skip any lines. Include line numbers starting from 1.
-Provide the explanation in the exact JSON format specified, with line numbers corresponding to the code.`
-      : `Analyze and explain this ${language} code. EVERY SINGLE LINE must have an explanation:
-
-\`\`\`${language}
-${code}
-\`\`\`
-
-${responseLanguageInstruction}
-
-MANDATORY: Provide an explanation for ALL lines of code. Do not skip any lines. Include line numbers starting from 1.
-Provide the explanation in the exact JSON format specified, with line numbers corresponding to the code.`;
+${responseLanguageInstruction}`;
 
     const message = await groq.chat.completions.create({
       model: "llama-3.3-70b-versatile",
       messages: [
-        {
-          role: "system",
-          content: systemPrompt,
-        },
-        {
-          role: "user",
-          content: userPrompt,
-        },
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
       ],
       temperature: 0.3,
       max_tokens: 4000,
+      response_format: { type: "json_object" }
     });
 
     const content = message.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error("No response from Groq API");
-    }
+    if (!content) throw new Error("No response from Groq API");
 
-    // Parse the JSON response
-    const parsed = JSON.parse(content) as ExplanationResponse;
-
-    // Validate the response structure
-    if (
-      !parsed.summary ||
-      !Array.isArray(parsed.lineExplanations) ||
-      !parsed.complexity ||
-      !Array.isArray(parsed.improvements)
-    ) {
-      throw new Error("Invalid response structure from AI");
-    }
-
+    const cleanedContent = cleanJsonString(content);
+    const parsed = JSON.parse(cleanedContent) as ExplanationResponse;
     return parsed;
-  } catch (error) {
-    if (error instanceof SyntaxError) {
-      throw new Error(`Failed to parse AI response: ${error.message}`);
-    }
-    throw error;
+  } catch (error: any) {
+    throw new Error(`Failed to parse AI response: ${error.message}`);
   }
+}
+
+export async function refactorCode(code: string, language: string, instruction: string): Promise<RefactorResponse> {
+  const prompt = `You are an expert developer.
+Please refactor the following ${language} code according to this instruction: "${instruction}".
+
+Return ONLY valid JSON in this exact format.
+IMPORTANT: You MUST properly escape all newlines as \\n and double quotes as \\" within the JSON string fields, otherwise the JSON will be invalid.
+{
+  "code": "the refactored code with \\n for newlines",
+  "explanation": "a brief explanation of what was changed and why"
+}
+
+Code to refactor:
+\`\`\`
+${code}
+\`\`\`
+`;
+
+  const message = await groq.chat.completions.create({
+    model: "llama-3.3-70b-versatile",
+    messages: [{ role: "user", content: prompt }],
+    temperature: 0.2,
+    max_tokens: 4000,
+    response_format: { type: "json_object" }
+  });
+
+  const content = message.choices[0]?.message?.content;
+  if (!content) throw new Error("No response from AI");
+
+  const cleanedContent = cleanJsonString(content);
+  return JSON.parse(cleanedContent) as RefactorResponse;
+}
+
+export async function chatWithCode(code: string, history: any[], newMessage: string) {
+  const systemMsg = `You are a helpful AI assistant integrated into a code snippet manager.
+The user is asking a question about the following code snippet:
+\`\`\`
+${code}
+\`\`\`
+Answer their question clearly and concisely. If they ask for code, provide it. Format your response with Markdown where appropriate.`;
+
+  // Keep only the last 10 messages to prevent token limits
+  const recentHistory = history.slice(-10);
+
+  const messages = [
+    { role: "system", content: systemMsg },
+    ...recentHistory.map(m => ({ role: m.role, content: m.content })),
+    { role: "user", content: newMessage }
+  ];
+
+  const response = await groq.chat.completions.create({
+    model: "llama-3.3-70b-versatile",
+    messages: messages as any,
+    temperature: 0.5,
+    max_tokens: 2048,
+  });
+
+  return response.choices[0]?.message?.content || "No response";
 }

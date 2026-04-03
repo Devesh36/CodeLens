@@ -40,6 +40,8 @@ model Snippet {
   
   tags             SnippetTag[]
   favorites        Favorite[]
+  versions         SnippetVersion[]
+  chatMessages     ChatMessage[]
   
   @@index([userId])
   @@index([shareToken])
@@ -79,5 +81,30 @@ model Favorite {
   
   @@unique([userId, snippetId])
   @@index([userId])
+  @@index([snippetId])
+}
+
+model SnippetVersion {
+  id               String     @id @default(cuid())
+  code             String     @db.Text
+  explanation      String     @db.Text
+  explanationJson  Json?
+  createdAt        DateTime   @default(now())
+
+  snippetId        String
+  snippet          Snippet    @relation(fields: [snippetId], references: [id], onDelete: Cascade)
+
+  @@index([snippetId])
+}
+
+model ChatMessage {
+  id        String     @id @default(cuid())
+  role      String     // 'user' or 'assistant'
+  content   String     @db.Text
+  createdAt DateTime   @default(now())
+
+  snippetId String
+  snippet   Snippet    @relation(fields: [snippetId], references: [id], onDelete: Cascade)
+
   @@index([snippetId])
 }
