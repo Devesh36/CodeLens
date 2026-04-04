@@ -165,6 +165,11 @@ export default function SignupPage() {
               Sign In
             </Link>
           </p>
+          <p className="text-center text-slate-500 text-xs mt-3">
+            <Link href="/" className="hover:text-slate-300 transition-colors">
+              Back to Landing Page
+            </Link>
+          </p>
         </div>
 
         {/* Status Info */}

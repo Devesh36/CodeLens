@@ -158,12 +158,17 @@ export default function HomePage() {
     return () => clearInterval(interval);
   }, []);
 
-  if (isAuthenticated) {
-    router.push("/dashboard");
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push("/dashboard");
+    }
+  }, [isAuthenticated, router]);
+
+  if (checkingAuth) {
     return null;
   }
 
-  if (checkingAuth) {
+  if (isAuthenticated) {
     return null;
   }
 
@@ -308,7 +313,7 @@ export default function HomePage() {
         </section>
 
         <section id="pricing" className="pb-14">
-          <div className="mb-10 grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="mb-10 grid grid-cols-1 lg:grid-cols-4 gap-4">
             <article className="rounded-2xl border border-cyan-400/20 bg-slate-900/55 p-5 sm:p-6">
               <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-cyan-300/30 bg-cyan-400/10 text-cyan-200">
                 <Globe2 size={18} />
@@ -336,6 +341,16 @@ export default function HomePage() {
               <h3 className="mt-4 text-lg font-semibold text-white">DSA + Development Ready</h3>
               <p className="mt-2 text-sm text-slate-400 leading-relaxed">
                 From interview-style algorithm code to production APIs, CodeLens gives line-level clarity on any coding style.
+              </p>
+            </article>
+
+            <article className="rounded-2xl border border-violet-400/20 bg-slate-900/55 p-5 sm:p-6">
+              <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-violet-300/30 bg-violet-400/10 text-violet-200">
+                <Sparkles size={18} />
+              </div>
+              <h3 className="mt-4 text-lg font-semibold text-white">AI Refactor (Pro)</h3>
+              <p className="mt-2 text-sm text-slate-400 leading-relaxed">
+                Give a refactor instruction and get cleaner, modernized code back with a quick rationale for the changes.
               </p>
             </article>
           </div>

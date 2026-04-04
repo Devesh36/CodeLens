@@ -405,14 +405,7 @@ function EditorPageContent() {
             </section>
 
             <footer className="border-t border-cyan-500/10 bg-slate-950/90 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-3 md:gap-4 text-xs text-slate-500">
-                <p className="font-semibold text-slate-400">CodeLens AI</p>
-                <button type="button" className="hover:text-slate-300 transition-colors">File</button>
-                <button type="button" className="hover:text-slate-300 transition-colors">Edit</button>
-                <button type="button" className="hover:text-slate-300 transition-colors">Selection</button>
-                <button type="button" className="hover:text-slate-300 transition-colors">View</button>
-                <button type="button" className="hover:text-slate-300 transition-colors">Run</button>
-              </div>
+            
               <div className="text-xs text-slate-500">{lineCount} lines • {charCount} chars</div>
             </footer>
           </main>

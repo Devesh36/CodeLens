@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getSnippet, updateSnippet, getSnippetVersions } from "@/app/actions";
+import { getSnippet, updateSnippet, getSnippetVersions, getCurrentUser } from "@/app/actions";
 import { ExplanationPanel } from "@/components/ExplanationPanel";
 import { ExplanationResponse } from "@/lib/ai";
 import { getLanguageName } from "@/lib/utils";
@@ -37,13 +37,27 @@ export default function EditSnippetPage() {
   const [activeTab, setActiveTab] = useState<"edit" | "history">("edit");
   const [isRefactoring, setIsRefactoring] = useState(false);
   const [refactorInstruction, setRefactorInstruction] = useState("");
+  const [userPlan, setUserPlan] = useState<"FREE" | "PRO">("FREE");
 
   useEffect(() => {
     loadSnippet();
   }, [params]);
 
+  useEffect(() => {
+    if (!snippet) return;
+    const displayTitle = formData.title?.trim() || snippet.title || "Snippet";
+    document.title = `Edit ${displayTitle} - CodeLens AI`;
+  }, [formData.title, snippet]);
+
   async function loadSnippet() {
     try {
+      const authResult = await getCurrentUser();
+      if (!authResult.user?.id) {
+        router.push("/login");
+        return;
+      }
+      setUserPlan(authResult.user.plan || "FREE");
+
       const snippetId = params.snippetId as string;
       const result = await getSnippet(snippetId);
       if (result.snippet) {
@@ -151,8 +165,8 @@ export default function EditSnippetPage() {
 
   return (
     <div className="min-h-screen bg-gray-900 p-6">
-      <Link href={`/dashboard/snippet/${snippet.id}`} className="text-blue-400 hover:text-blue-300 mb-4 block">
-        ← Back to Snippet
+      <Link href="/dashboard" className="text-blue-400 hover:text-blue-300 mb-4 block">
+        ← Back to Dashboard
       </Link>
 
       <div className="max-w-4xl mx-auto">
@@ -240,17 +254,25 @@ export default function EditSnippetPage() {
                   placeholder="e.g. Convert to arrow functions"
                   value={refactorInstruction}
                   onChange={(e) => setRefactorInstruction(e.target.value)}
-                  className="px-3 py-1 bg-gray-800 border border-gray-700 rounded text-sm text-white focus:outline-none focus:border-indigo-500 w-64"
+                  disabled={userPlan !== "PRO"}
+                  title={userPlan === "PRO" ? "" : "Pro plan required"}
+                  className="px-3 py-1 bg-gray-800 border border-gray-700 rounded text-sm text-white focus:outline-none focus:border-indigo-500 w-64 disabled:opacity-60"
                 />
                 <button
                   type="button"
                   onClick={handleRefactor}
-                  disabled={isRefactoring || !refactorInstruction}
+                  disabled={userPlan !== "PRO" || isRefactoring || !refactorInstruction}
+                  title={userPlan === "PRO" ? "" : "Pro plan required"}
                   className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded text-sm flex items-center gap-1 transition-colors"
                 >
                   {isRefactoring ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                   AI Refactor
                 </button>
+                {userPlan !== "PRO" && (
+                  <Link href="/dashboard" className="text-xs text-amber-300 hover:text-amber-200">
+                    Pro only
+                  </Link>
+                )}
               </div>
             </div>
             <textarea
